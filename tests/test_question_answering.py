@@ -1,11 +1,11 @@
 import os
 import tempfile
+
 import pandas as pd
 import pytest
 from datasets import Dataset
-
-from geniusrise.core import BatchInputConfig, BatchOutputConfig, InMemoryStateManager
 from geniusrise.bolts.openai.question_answering import OpenAIQuestionAnsweringFineTuner
+from geniusrise.core import BatchInputConfig, BatchOutputConfig, InMemoryStateManager
 
 # Retrieve environment variables
 api_key = os.getenv("OPENAI_API_KEY")
@@ -67,8 +67,16 @@ def test_load_dataset(bolt):
 def test_prepare_fine_tuning_data(bolt):
     # Create a sample dataset
     data = [
-        {"text": "The capital of France is Paris.", "question": "What is the capital of France?", "answer": "Paris"},
-        {"text": "The capital of India is Delhi.", "question": "What is the capital of India?", "answer": "Delhi"},
+        {
+            "text": "The capital of France is Paris.",
+            "question": "What is the capital of France?",
+            "answer": "Paris",
+        },
+        {
+            "text": "The capital of India is Delhi.",
+            "question": "What is the capital of India?",
+            "answer": "Delhi",
+        },
     ]
     data_df = pd.DataFrame(data)
 
@@ -93,8 +101,16 @@ def test_prepare_fine_tuning_data(bolt):
 def test_fine_tune(bolt):
     # Create a sample dataset
     data = [
-        {"text": "The capital of France is Paris.", "question": "What is the capital of France?", "answer": "Paris"},
-        {"text": "The capital of India is Delhi.", "question": "What is the capital of India?", "answer": "Delhi"},
+        {
+            "text": "The capital of France is Paris.",
+            "question": "What is the capital of France?",
+            "answer": "Paris",
+        },
+        {
+            "text": "The capital of India is Delhi.",
+            "question": "What is the capital of India?",
+            "answer": "Delhi",
+        },
     ]
     data_df = pd.DataFrame(data)
 

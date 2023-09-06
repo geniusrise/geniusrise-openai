@@ -1,12 +1,14 @@
-import os
 import json
+import os
 import sqlite3
-import pandas as pd
 import xml.etree.ElementTree as ET
 from typing import Any, Dict, List, Optional, Union
-from pyarrow import feather, parquet as pq
+
+import pandas as pd
 from datasets import Dataset, DatasetDict, load_from_disk
 from geniusrise import BatchInput, BatchOutput, State
+from pyarrow import feather
+from pyarrow import parquet as pq
 
 from .base import OpenAIFineTuner
 
@@ -205,7 +207,7 @@ class OpenAISentimentAnalysisFineTuner(OpenAIFineTuner):
         Raises:
             ValueError: If data_type is not 'train' or 'eval'.
         """
-        if data_type not in ['train', 'eval']:
+        if data_type not in ["train", "eval"]:
             raise ValueError("data_type must be either 'train' or 'eval'.")
 
         # Convert the data to a pandas DataFrame
@@ -215,7 +217,7 @@ class OpenAISentimentAnalysisFineTuner(OpenAIFineTuner):
         file_path = os.path.join(self.input.get(), f"{data_type}.jsonl")
         df.to_json(file_path, orient="records", lines=True)
 
-        if data_type == 'train':
+        if data_type == "train":
             self.train_file = file_path
         else:
             self.eval_file = file_path

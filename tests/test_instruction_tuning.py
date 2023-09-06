@@ -1,12 +1,12 @@
-import os
 import json
+import os
 import tempfile
+
 import pandas as pd
 import pytest
 from datasets import Dataset
-
-from geniusrise.core import BatchInputConfig, BatchOutputConfig, InMemoryStateManager
 from geniusrise.bolts.openai.instruction_tuning import OpenAIInstructionFineTuner
+from geniusrise.core import BatchInputConfig, BatchOutputConfig, InMemoryStateManager
 
 # Retrieve environment variables
 api_key = os.getenv("OPENAI_API_KEY")

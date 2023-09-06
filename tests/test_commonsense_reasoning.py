@@ -1,12 +1,14 @@
-import os
 import json
+import os
 import tempfile
+
 import pandas as pd
 import pytest
 from datasets import Dataset
-
+from geniusrise.bolts.openai.commonsense_reasoning import (
+    OpenAICommonsenseReasoningFineTuner,
+)
 from geniusrise.core import BatchInputConfig, BatchOutputConfig, InMemoryStateManager
-from geniusrise.bolts.openai.commonsense_reasoning import OpenAICommonsenseReasoningFineTuner
 
 # Retrieve environment variables
 api_key = os.getenv("OPENAI_API_KEY")
@@ -18,7 +20,11 @@ api_version = os.getenv("OPENAI_API_VERSION")
 def create_mock_data(dataset_path):
     os.makedirs(dataset_path, exist_ok=True)
     data = [
-        {"premise": "The premise text", "hypothesis": "The hypothesis text", "label": 0},
+        {
+            "premise": "The premise text",
+            "hypothesis": "The hypothesis text",
+            "label": 0,
+        },
         # Add more examples as needed
     ]
     with open(os.path.join(dataset_path, "data.jsonl"), "w") as file:

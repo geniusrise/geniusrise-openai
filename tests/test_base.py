@@ -1,16 +1,15 @@
 # type: ignore
 import os
 import tempfile
-import pytest
-import openai
 from unittest.mock import patch
 
 import pandas as pd
+import pytest
 from datasets import Dataset
+from geniusrise.bolts.openai.base import OpenAIFineTuner
 from geniusrise.core import BatchInputConfig, BatchOutputConfig, InMemoryStateManager
 
-from geniusrise.bolts.openai.base import OpenAIFineTuner
-
+import openai
 
 # Retrieve environment variables
 api_key = os.getenv("OPENAI_API_KEY")

@@ -3,7 +3,12 @@ from typing import Optional
 
 import pandas as pd
 from datasets import Dataset, DatasetDict, load_from_disk
-from openai.validators import apply_necessary_remediation, apply_optional_remediation, get_validators
+
+from openai.validators import (
+    apply_necessary_remediation,
+    apply_optional_remediation,
+    get_validators,
+)
 
 from .base import OpenAIFineTuner
 
@@ -59,7 +64,9 @@ class OpenAISummarizationFineTuner(OpenAIFineTuner):
             raise
 
     def prepare_fine_tuning_data(
-        self, data: Dataset | DatasetDict | Optional[Dataset], apply_optional_remediations: bool = False
+        self,
+        data: Dataset | DatasetDict | Optional[Dataset],
+        apply_optional_remediations: bool = False,
     ) -> None:
         """
         Prepare the given data for fine-tuning.

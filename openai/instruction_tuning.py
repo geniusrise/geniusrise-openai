@@ -1,12 +1,13 @@
+import glob
 import json
 import os
-import glob
-import pandas as pd
 import sqlite3
 import xml.etree.ElementTree as ET
+from typing import Any, Dict, Optional, Union
+
+import pandas as pd
 import pyarrow.parquet as pq
 import yaml
-from typing import Any, Dict, Optional, Union
 from datasets import Dataset, DatasetDict, load_from_disk
 from pyarrow import feather
 
@@ -114,7 +115,7 @@ class OpenAIInstructionFineTuner(OpenAIFineTuner):
                         for record in root.findall("record"):
                             example = {
                                 "instruction": record.find("instruction").text,
-                                "output": record.find("output").text
+                                "output": record.find("output").text,
                             }
                             data.append(example)
                     elif filename.endswith((".yaml", ".yml")):
@@ -152,7 +153,7 @@ class OpenAIInstructionFineTuner(OpenAIFineTuner):
         Raises:
             ValueError: If data_type is not 'train' or 'eval'.
         """
-        if data_type not in ['train', 'eval']:
+        if data_type not in ["train", "eval"]:
             raise ValueError("data_type must be either 'train' or 'eval'.")
 
         # Convert the data to a pandas DataFrame
@@ -162,7 +163,7 @@ class OpenAIInstructionFineTuner(OpenAIFineTuner):
         file_path = os.path.join(self.input.get(), f"{data_type}.jsonl")
         df.to_json(file_path, orient="records", lines=True)
 
-        if data_type == 'train':
+        if data_type == "train":
             self.train_file = file_path
         else:
             self.eval_file = file_path

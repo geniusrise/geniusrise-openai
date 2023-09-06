@@ -2,12 +2,13 @@ import json
 import os
 import sqlite3
 import xml.etree.ElementTree as ET
+from typing import Any, Dict, Optional, Union
+
 import pandas as pd
 import pyarrow.parquet as pq
 import yaml
 from datasets import Dataset, DatasetDict, load_from_disk
 from pyarrow import feather
-from typing import Any, Dict, Union, Optional
 
 from .base import OpenAIFineTuner
 
@@ -107,7 +108,7 @@ class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
                             example = {
                                 "premise": record.find("premise").text,
                                 "hypothesis": record.find("hypothesis").text,
-                                "label": int(record.find("label").text)
+                                "label": int(record.find("label").text),
                             }
                             data.append(example)
                     elif filename.endswith((".yaml", ".yml")):
@@ -145,7 +146,7 @@ class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
         Raises:
             ValueError: If data_type is not 'train' or 'eval'.
         """
-        if data_type not in ['train', 'eval']:
+        if data_type not in ["train", "eval"]:
             raise ValueError("data_type must be either 'train' or 'eval'.")
 
         # Convert the data to a pandas DataFrame
@@ -160,7 +161,7 @@ class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
         file_path = os.path.join(self.input.get(), f"{data_type}.jsonl")
         df.to_json(file_path, orient="records", lines=True)
 
-        if data_type == 'train':
+        if data_type == "train":
             self.train_file = file_path
         else:
             self.eval_file = file_path
@@ -178,8 +179,8 @@ class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
             eval_dataset_path = os.path.join(self.input.get(), "eval")
             train_dataset = self.load_dataset(train_dataset_path, **kwargs)
             eval_dataset = self.load_dataset(eval_dataset_path, **kwargs)
-            self.prepare_fine_tuning_data(train_dataset, 'train')
-            self.prepare_fine_tuning_data(eval_dataset, 'eval')
+            self.prepare_fine_tuning_data(train_dataset, "train")
+            self.prepare_fine_tuning_data(eval_dataset, "eval")
         except Exception as e:
             self.log.exception(f"Failed to preprocess data: {e}")
             raise

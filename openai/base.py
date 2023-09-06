@@ -1,14 +1,15 @@
 import logging
 import os
 from abc import abstractmethod
-from typing import Optional, Union, List
 from time import sleep
-from tqdm import tqdm
+from typing import List, Optional, Union
 
-import openai
 import pandas as pd
 from datasets import Dataset, DatasetDict
 from geniusrise import BatchInput, BatchOutput, Bolt, State
+from tqdm import tqdm
+
+import openai
 from openai.cli import FineTune
 
 
@@ -66,7 +67,7 @@ class OpenAIFineTuner(Bolt):
         Raises:
             ValueError: If data_type is not 'train' or 'eval'.
         """
-        if data_type not in ['train', 'eval']:
+        if data_type not in ["train", "eval"]:
             raise ValueError("data_type must be either 'train' or 'eval'.")
 
         # Convert the data to a pandas DataFrame
@@ -76,7 +77,7 @@ class OpenAIFineTuner(Bolt):
         file_path = os.path.join(self.input.get(), f"{data_type}.jsonl")
         df.to_json(file_path, orient="records", lines=True)
 
-        if data_type == 'train':
+        if data_type == "train":
             self.train_file = file_path
         else:
             self.eval_file = file_path
@@ -94,8 +95,8 @@ class OpenAIFineTuner(Bolt):
             eval_dataset_path = os.path.join(self.input.get(), "eval")
             train_dataset = self.load_dataset(train_dataset_path, **kwargs)
             eval_dataset = self.load_dataset(eval_dataset_path, **kwargs)
-            self.prepare_fine_tuning_data(train_dataset, 'train')
-            self.prepare_fine_tuning_data(eval_dataset, 'eval')
+            self.prepare_fine_tuning_data(train_dataset, "train")
+            self.prepare_fine_tuning_data(eval_dataset, "eval")
         except Exception as e:
             self.log.exception(f"Failed to preprocess data: {e}")
             raise
@@ -186,7 +187,11 @@ class OpenAIFineTuner(Bolt):
                 self.log.info(f"😭 Fine-tuning job {job_id} failed.")
                 return job
             else:
-                for _ in tqdm(range(check_interval), desc="Waiting for fine-tuning to complete", ncols=100):
+                for _ in tqdm(
+                    range(check_interval),
+                    desc="Waiting for fine-tuning to complete",
+                    ncols=100,
+                ):
                     sleep(1)
 
     @staticmethod

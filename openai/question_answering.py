@@ -1,11 +1,11 @@
-import os
-import json
 import ast
-import pandas as pd
+import json
+import os
 import sqlite3
 import xml.etree.ElementTree as ET
-from typing import Optional, Dict, Any, Union
+from typing import Any, Dict, Optional, Union
 
+import pandas as pd
 from datasets import Dataset, DatasetDict, load_from_disk
 from geniusrise import BatchInput, BatchOutput, State
 
@@ -185,7 +185,7 @@ class OpenAIQuestionAnsweringFineTuner(OpenAIFineTuner):
         Raises:
             ValueError: If data_type is not 'train' or 'eval'.
         """
-        if data_type not in ['train', 'eval']:
+        if data_type not in ["train", "eval"]:
             raise ValueError("data_type must be either 'train' or 'eval'.")
 
         # Convert the data to a pandas DataFrame
@@ -200,7 +200,7 @@ class OpenAIQuestionAnsweringFineTuner(OpenAIFineTuner):
         file_path = os.path.join(self.input.get(), f"{data_type}.jsonl")
         df.to_json(file_path, orient="records", lines=True)
 
-        if data_type == 'train':
+        if data_type == "train":
             self.train_file = file_path
         else:
             self.eval_file = file_path

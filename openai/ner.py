@@ -84,9 +84,7 @@ class NamedEntityRecognitionFineTuner(OpenAIFineTuner):
     ```
     """
 
-    def load_dataset(
-        self, dataset_path: str, **kwargs: Any
-    ) -> Union[Dataset, DatasetDict, None]:
+    def load_dataset(self, dataset_path: str, **kwargs: Any) -> Union[Dataset, DatasetDict, None]:
         r"""
         Load a named entity recognition dataset from a directory.
 
@@ -223,7 +221,7 @@ class NamedEntityRecognitionFineTuner(OpenAIFineTuner):
         Raises:
             ValueError: If data_type is not 'train' or 'eval'.
         """
-        if data_type not in ['train', 'eval']:
+        if data_type not in ["train", "eval"]:
             raise ValueError("data_type must be either 'train' or 'eval'.")
 
         # Convert the data to a pandas DataFrame
@@ -238,7 +236,7 @@ class NamedEntityRecognitionFineTuner(OpenAIFineTuner):
         file_path = os.path.join(self.input.get(), f"{data_type}.jsonl")
         df.to_json(file_path, orient="records", lines=True)
 
-        if data_type == 'train':
+        if data_type == "train":
             self.train_file = file_path
         else:
             self.eval_file = file_path

@@ -1,10 +1,13 @@
 import json
 import os
-from typing import Optional
-
+import sqlite3
+import xml.etree.ElementTree as ET
 import pandas as pd
+import pyarrow.parquet as pq
+import yaml
 from datasets import Dataset, DatasetDict, load_from_disk
-from openai.validators import apply_necessary_remediation, apply_optional_remediation, get_validators
+from pyarrow import feather
+from typing import Any, Dict, Union, Optional
 
 from .base import OpenAIFineTuner
 
@@ -15,76 +18,136 @@ class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
 
     This bolt uses the OpenAI API to fine-tune a pre-trained model for commonsense reasoning.
 
-    The dataset should be in the following format:
-    - Each example is a dictionary with the following keys:
-        - 'premise': a string representing the premise.
-        - 'hypothesis': a string representing the hypothesis.
-        - 'label': an integer representing the label (0 for entailment, 1 for neutral, 2 for contradiction).
+    ## Using geniusrise to invoke via command line
+    ```bash
+    genius OpenAICommonsenseReasoningFineTuner rise \
+        # Add your command line arguments here
+    ```
+
+    ## Using geniusrise to invoke via YAML file
+    ```yaml
+    # Add your YAML configuration here
+    ```
     """
 
-    def load_dataset(self, dataset_path: str, **kwargs) -> Dataset | DatasetDict | Optional[Dataset]:
+    def load_dataset(self, dataset_path: str, **kwargs: Any) -> Union[Dataset, DatasetDict, Optional[Dataset]]:
         """
         Load a commonsense reasoning dataset from a directory.
 
-        The directory can contain either:
-        - Dataset files saved by the Hugging Face datasets library, or
-        - JSONL files where each line is a JSON object representing an example. Each JSON object should have the
-          following structure:
-            {
-                "premise": "The premise text",
-                "hypothesis": "The hypothesis text",
-                "label": 0 or 1 or 2
-            }
-
         Args:
             dataset_path (str): The path to the dataset directory.
+            **kwargs: Additional keyword arguments.
 
         Returns:
             Dataset: The loaded dataset.
 
         Raises:
             Exception: If there was an error loading the dataset.
+
+        ## Supported Data Formats and Structures:
+
+        ### Hugging Face Dataset
+        Dataset files saved by the Hugging Face datasets library.
+
+        ### JSONL
+        Each line is a JSON object representing an example.
+
+        ### CSV
+        Should contain 'premise', 'hypothesis', and 'label' columns.
+
+        ### Parquet
+        Should contain 'premise', 'hypothesis', and 'label' columns.
+
+        ### JSON
+        An array of dictionaries with 'premise', 'hypothesis', and 'label' keys.
+
+        ### XML
+        Each 'record' element should contain 'premise', 'hypothesis', and 'label' child elements.
+
+        ### YAML
+        Each document should be a dictionary with 'premise', 'hypothesis', and 'label' keys.
+
+        ### TSV
+        Should contain 'premise', 'hypothesis', and 'label' columns separated by tabs.
+
+        ### Excel (.xls, .xlsx)
+        Should contain 'premise', 'hypothesis', and 'label' columns.
+
+        ### SQLite (.db)
+        Should contain a table with 'premise', 'hypothesis', and 'label' columns.
+
+        ### Feather
+        Should contain 'premise', 'hypothesis', and 'label' columns.
         """
         try:
-            self.log.info(f"Loading dataset from {dataset_path}")
+            data = []
             if os.path.isfile(os.path.join(dataset_path, "dataset_info.json")):
-                # Load dataset saved by Hugging Face datasets library
                 return load_from_disk(dataset_path)
             else:
-                # Load dataset from JSONL files
-                data = []
                 for filename in os.listdir(dataset_path):
-                    with open(os.path.join(dataset_path, filename), "r") as f:
-                        for line in f:
-                            example = json.loads(line)
+                    filepath = os.path.join(dataset_path, filename)
+                    if filename.endswith(".jsonl"):
+                        with open(filepath, "r") as f:
+                            for line in f:
+                                example = json.loads(line)
+                                data.append(example)
+                    elif filename.endswith(".csv"):
+                        df = pd.read_csv(filepath)
+                        data.extend(df.to_dict("records"))
+                    elif filename.endswith(".parquet"):
+                        df = pq.read_table(filepath).to_pandas()
+                        data.extend(df.to_dict("records"))
+                    elif filename.endswith(".json"):
+                        with open(filepath, "r") as f:
+                            data.extend(json.load(f))
+                    elif filename.endswith(".xml"):
+                        tree = ET.parse(filepath)
+                        root = tree.getroot()
+                        for record in root.findall("record"):
+                            example = {
+                                "premise": record.find("premise").text,
+                                "hypothesis": record.find("hypothesis").text,
+                                "label": int(record.find("label").text)
+                            }
                             data.append(example)
+                    elif filename.endswith((".yaml", ".yml")):
+                        with open(filepath, "r") as f:
+                            data.extend(yaml.safe_load(f))
+                    elif filename.endswith(".tsv"):
+                        df = pd.read_csv(filepath, sep="\t")
+                        data.extend(df.to_dict("records"))
+                    elif filename.endswith((".xls", ".xlsx")):
+                        df = pd.read_excel(filepath)
+                        data.extend(df.to_dict("records"))
+                    elif filename.endswith(".db"):
+                        conn = sqlite3.connect(filepath)
+                        query = "SELECT premise, hypothesis, label FROM dataset_table;"
+                        df = pd.read_sql_query(query, conn)
+                        data.extend(df.to_dict("records"))
+                    elif filename.endswith(".feather"):
+                        df = feather.read_feather(filepath)
+                        data.extend(df.to_dict("records"))
+
                 return Dataset.from_pandas(pd.DataFrame(data))
+
         except Exception as e:
-            self.log.error(f"Error occurred when loading dataset from {dataset_path}. Error: {e}")
+            self.log.exception(f"Failed to load dataset: {e}")
             raise
 
-    def prepare_fine_tuning_data(
-        self, data: Dataset | DatasetDict | Optional[Dataset], apply_optional_remediations: bool = False
-    ) -> None:
+    def prepare_fine_tuning_data(self, data: Union[Dataset, DatasetDict, Optional[Dataset]], data_type: str) -> None:
         """
         Prepare the given data for fine-tuning.
 
-        This method applies necessary and optional remediations to the data based on OpenAI's validators.
-        The remediations are logged and the processed data is saved into two files.
-
-        The data is converted into the format expected by OpenAI for fine-tuning:
-        - The 'prompt' field is created by concatenating the 'premise' and 'hypothesis' fields with a newline in between.
-        - The 'completion' field is created by mapping the 'label' field to its string representation ('entailment', 'neutral', or 'contradiction').
-
         Args:
-            data (Dataset | DatasetDict | Optional[Dataset]): The data to prepare for fine-tuning. This should be a
-            Dataset or DatasetDict object, or a pandas DataFrame. If it's a DataFrame, it should have the following
-            columns: 'premise', 'hypothesis', 'label'.
-            apply_optional_remediations (bool, optional): Whether to apply optional remediations. Defaults to False.
+            data: The dataset to prepare.
+            data_type: Either 'train' or 'eval' to specify the type of data.
 
         Raises:
-            Exception: If there was an error preparing the data.
+            ValueError: If data_type is not 'train' or 'eval'.
         """
+        if data_type not in ['train', 'eval']:
+            raise ValueError("data_type must be either 'train' or 'eval'.")
+
         # Convert the data to a pandas DataFrame
         df = pd.DataFrame.from_records(data=data)
 
@@ -93,32 +156,30 @@ class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
         df["completion"] = df["label"].map({0: "entailment", 1: "neutral", 2: "contradiction"})
         df = df[["prompt", "completion"]]
 
-        # Apply necessary and optional remediations
-        optional_remediations = []
-        validators = get_validators()  # type: ignore
-        for validator in validators:
-            remediation = validator(df)
-            if remediation is not None:
-                optional_remediations.append(remediation)
-                df = apply_necessary_remediation(df, remediation)  # type: ignore
+        # Save the processed data into a file in JSONL format
+        file_path = os.path.join(self.input.get(), f"{data_type}.jsonl")
+        df.to_json(file_path, orient="records", lines=True)
 
-        # Apply optional remediations if necessary
-        any_optional_or_necessary_remediations = any(
-            [
-                remediation
-                for remediation in optional_remediations
-                if remediation.optional_msg is not None or remediation.necessary_msg is not None
-            ]
-        )
-        if any_optional_or_necessary_remediations and apply_optional_remediations:
-            self.log.info("Based on the analysis we will perform the following actions:")
-            for remediation in optional_remediations:
-                df, _ = apply_optional_remediation(df, remediation, auto_accept=True)  # type: ignore
+        if data_type == 'train':
+            self.train_file = file_path
         else:
-            self.log.info("Validations passed, no remediations needed to be applied.")
+            self.eval_file = file_path
 
-        # Save the processed data into two files in JSONL format
-        self.train_file = os.path.join(self.input_config.get(), "train.jsonl")  # type: ignore
-        self.eval_file = os.path.join(self.input_config.get(), "eval.jsonl")  # type: ignore
-        df.to_json(self.train_file, orient="records", lines=True)
-        df.to_json(self.eval_file, orient="records", lines=True)
+    def preprocess_data(self, **kwargs) -> None:
+        """
+        Load and preprocess the dataset.
+
+        Raises:
+            Exception: If any step in the preprocessing fails.
+        """
+        try:
+            self.input.copy_from_remote()
+            train_dataset_path = os.path.join(self.input.get(), "train")
+            eval_dataset_path = os.path.join(self.input.get(), "eval")
+            train_dataset = self.load_dataset(train_dataset_path, **kwargs)
+            eval_dataset = self.load_dataset(eval_dataset_path, **kwargs)
+            self.prepare_fine_tuning_data(train_dataset, 'train')
+            self.prepare_fine_tuning_data(eval_dataset, 'eval')
+        except Exception as e:
+            self.log.exception(f"Failed to preprocess data: {e}")
+            raise

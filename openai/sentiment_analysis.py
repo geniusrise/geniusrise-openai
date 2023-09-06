@@ -1,122 +1,221 @@
 import os
-from typing import Optional
-
+import json
+import sqlite3
 import pandas as pd
+import xml.etree.ElementTree as ET
+from typing import Any, Dict, List, Optional, Union
+from pyarrow import feather, parquet as pq
 from datasets import Dataset, DatasetDict, load_from_disk
-from openai.validators import apply_necessary_remediation, apply_optional_remediation, get_validators
+from geniusrise import BatchInput, BatchOutput, State
 
 from .base import OpenAIFineTuner
 
 
 class OpenAISentimentAnalysisFineTuner(OpenAIFineTuner):
+    r"""
+    A bolt for fine-tuning OpenAI models on sentiment analysis tasks.
+
+    ## Using Command Line
+    ```bash
+    genius OpenAISentimentAnalysisFineTuner rise \
+        batch \
+            --input_bucket my-bucket \
+            --input_folder my-folder \
+        batch \
+            --output_bucket my-bucket \
+            --output_folder my-folder \
+        postgres \
+            --postgres_host 127.0.0.1 \
+            --postgres_port 5432 \
+            --postgres_user postgres \
+            --postgres_password postgres \
+            --postgres_database geniusrise \
+            --postgres_table state \
+        listen \
+            --args various=30 arguments=40 that=50 this=70 bolt=63 may=lol have='{"lol": "lel"}'
+    ```
+
+    ## Using YAML File
+    ```yaml
+    version: "1"
+    bolts:
+        my_fine_tuner:
+            name: "OpenAISentimentAnalysisFineTuner"
+            method: "load_dataset"
+            args:
+                dataset_path: "/path/to/dataset"
+            input:
+                type: "batch"
+                args:
+                    bucket: "my-bucket"
+                    folder: "my-folder"
+            output:
+                type: "batch"
+                args:
+                    bucket: "my-bucket"
+                    folder: "my-folder"
+            state:
+                type: "postgres"
+                args:
+                    postgres_host: "127.0.0.1"
+                    postgres_port: 5432
+                    postgres_user: "postgres"
+                    postgres_password: "postgres"
+                    postgres_database: "geniusrise"
+                    postgres_table: "state"
+            deploy:
+                type: "k8s"
+                args:
+                    name: "my_fine_tuner"
+                    namespace: "default"
+                    image: "my_fine_tuner_image"
+                    replicas: 1
+    ```
+
+    Args:
+        input (BatchInput): The batch input data.
+        output (BatchOutput): The output data.
+        state (State): The state manager.
     """
-    A bolt for fine-tuning OpenAI models for sentiment analysis tasks.
 
-    This bolt uses the OpenAI API to fine-tune a pre-trained model for sentiment analysis.
-
-    The dataset should be in the following format:
-    - Each example is a dictionary with the following keys:
-        - 'text': a string representing the text to be analyzed.
-        - 'label': a string representing the sentiment label (e.g., 'positive', 'negative').
-    """
-
-    def load_dataset(self, dataset_path: str, **kwargs) -> Dataset | DatasetDict | Optional[Dataset]:
-        """
-        Load a sentiment analysis dataset from a directory.
-
-        The directory can contain either:
-        - Dataset files saved by the Hugging Face datasets library, or
-        - Text files where the filename is the sentiment label and the content of the file is the text to be analyzed.
+    def load_dataset(self, dataset_path: str, **kwargs: Any) -> Union[Dataset, DatasetDict, Optional[Dataset]]:
+        r"""
+        Load a dataset from a directory.
 
         Args:
             dataset_path (str): The path to the dataset directory.
+            **kwargs: Additional keyword arguments.
 
         Returns:
-            Dataset: The loaded dataset.
+            Dataset | DatasetDict: The loaded dataset.
 
-        Raises:
-            Exception: If there was an error loading the dataset.
+        ## Supported Data Formats and Structures:
+
+        ### JSONL
+        Each line is a JSON object representing an example.
+        ```json
+        {"text": "The text content", "label": "The label"}
+        ```
+
+        ### CSV
+        Should contain 'text' and 'label' columns.
+        ```csv
+        text,label
+        "The text content","The label"
+        ```
+
+        ### Parquet
+        Should contain 'text' and 'label' columns.
+
+        ### JSON
+        An array of dictionaries with 'text' and 'label' keys.
+        ```json
+        [{"text": "The text content", "label": "The label"}]
+        ```
+
+        ### XML
+        Each 'record' element should contain 'text' and 'label' child elements.
+        ```xml
+        <record>
+            <text>The text content</text>
+            <label>The label</label>
+        </record>
+        ```
+
+        ### YAML
+        Each document should be a dictionary with 'text' and 'label' keys.
+        ```yaml
+        - text: "The text content"
+          label: "The label"
+        ```
+
+        ### TSV
+        Should contain 'text' and 'label' columns separated by tabs.
+
+        ### Excel (.xls, .xlsx)
+        Should contain 'text' and 'label' columns.
+
+        ### SQLite (.db)
+        Should contain a table with 'text' and 'label' columns.
+
+        ### Feather
+        Should contain 'text' and 'label' columns.
         """
+        data = []
         try:
-            self.log.info(f"Loading dataset from {dataset_path}")
             if os.path.isfile(os.path.join(dataset_path, "dataset_info.json")):
-                # Load dataset saved by Hugging Face datasets library
-                return load_from_disk(dataset_path)
+                dataset = load_from_disk(dataset_path)
             else:
-                # Load dataset from text files
-                data = []
                 for filename in os.listdir(dataset_path):
-                    with open(os.path.join(dataset_path, filename), "r") as f:
-                        text = f.read().strip()
-                        label = filename.split(".")[0]  # Assuming the filename is the label
-                        data.append({"text": text, "label": label})
-                return Dataset.from_pandas(pd.DataFrame(data))
+                    filepath = os.path.join(dataset_path, filename)
+                    if filename.endswith(".jsonl"):
+                        with open(filepath, "r") as f:
+                            for line in f:
+                                example = json.loads(line)
+                                data.append(example)
+                    elif filename.endswith(".csv"):
+                        df = pd.read_csv(filepath)
+                        data.extend(df.to_dict("records"))
+                    elif filename.endswith(".parquet"):
+                        df = pq.read_table(filepath).to_pandas()
+                        data.extend(df.to_dict("records"))
+                    elif filename.endswith(".json"):
+                        with open(filepath, "r") as f:
+                            json_data = json.load(f)
+                            data.extend(json_data)
+                    elif filename.endswith(".xml"):
+                        tree = ET.parse(filepath)
+                        root = tree.getroot()
+                        for record in root.findall("record"):
+                            text = record.find("text").text  # type: ignore
+                            label = record.find("label").text  # type: ignore
+                            data.append({"text": text, "label": label})
+                    elif filename.endswith(".yaml") or filename.endswith(".yml"):
+                        with open(filepath, "r") as f:
+                            yaml_data = yaml.safe_load(f)
+                            data.extend(yaml_data)
+                    elif filename.endswith(".tsv"):
+                        df = pd.read_csv(filepath, sep="\t")
+                        data.extend(df.to_dict("records"))
+                    elif filename.endswith((".xls", ".xlsx")):
+                        df = pd.read_excel(filepath)
+                        data.extend(df.to_dict("records"))
+                    elif filename.endswith(".db"):
+                        conn = sqlite3.connect(filepath)
+                        query = "SELECT text, label FROM dataset_table;"
+                        df = pd.read_sql_query(query, conn)
+                        data.extend(df.to_dict("records"))
+                    elif filename.endswith(".feather"):
+                        df = feather.read_feather(filepath)
+                        data.extend(df.to_dict("records"))
+                dataset = Dataset.from_pandas(pd.DataFrame(data))
         except Exception as e:
-            self.log.error(f"Error occurred when loading dataset from {dataset_path}. Error: {e}")
+            self.log.exception(f"Failed to load dataset: {e}")
             raise
+        return dataset
 
-    def prepare_fine_tuning_data(
-        self, data: Dataset | DatasetDict | Optional[Dataset], apply_optional_remediations: bool = False
-    ) -> None:
+    def prepare_fine_tuning_data(self, data: Union[Dataset, DatasetDict, Optional[Dataset]], data_type: str) -> None:
         """
         Prepare the given data for fine-tuning.
 
-        This method applies necessary and optional remediations to the data based on OpenAI's validators.
-        The remediations are logged and the processed data is saved into two files.
-
-        The data is converted into the format expected by OpenAI for fine-tuning:
-        - The 'prompt' field is created from the 'text' field.
-        - The 'completion' field is created from the 'label' field.
-
         Args:
-            data (Dataset | DatasetDict | Optional[Dataset]): The data to prepare for fine-tuning. This should be a
-            Dataset or DatasetDict object, or a pandas DataFrame. If it's a DataFrame, it should have the following
-            columns: 'text', 'label'.
-            apply_optional_remediations (bool, optional): Whether to apply optional remediations. Defaults to False.
+            data: The dataset to prepare.
+            data_type: Either 'train' or 'eval' to specify the type of data.
 
         Raises:
-            Exception: If there was an error preparing the data.
+            ValueError: If data_type is not 'train' or 'eval'.
         """
+        if data_type not in ['train', 'eval']:
+            raise ValueError("data_type must be either 'train' or 'eval'.")
+
         # Convert the data to a pandas DataFrame
         df = pd.DataFrame.from_records(data=data)
 
-        # For sentiment analysis tasks, we need to convert the data into the format expected by OpenAI
-        df["prompt"] = df["text"]
-        df["completion"] = df["label"]
-        df = df[["prompt", "completion"]]
+        # Save the processed data into a file in JSONL format
+        file_path = os.path.join(self.input.get(), f"{data_type}.jsonl")
+        df.to_json(file_path, orient="records", lines=True)
 
-        # Initialize a list to store optional remediations
-        optional_remediations = []
-
-        # Get OpenAI's validators
-        validators = get_validators()  # type: ignore
-
-        # Apply necessary remediations and store optional remediations
-        for validator in validators:
-            remediation = validator(df)
-            if remediation is not None:
-                optional_remediations.append(remediation)
-                df = apply_necessary_remediation(df, remediation)  # type: ignore
-
-        # Check if there are any optional or necessary remediations
-        any_optional_or_necessary_remediations = any(
-            [
-                remediation
-                for remediation in optional_remediations
-                if remediation.optional_msg is not None or remediation.necessary_msg is not None
-            ]
-        )
-
-        # Apply optional remediations if there are any
-        if any_optional_or_necessary_remediations and apply_optional_remediations:
-            self.log.info("Based on the analysis we will perform the following actions:")
-            for remediation in optional_remediations:
-                df, _ = apply_optional_remediation(df, remediation, auto_accept=True)  # type: ignore
+        if data_type == 'train':
+            self.train_file = file_path
         else:
-            self.log.info("Validations passed, no remediations needed to be applied.")
-
-        # Save the processed data into two files in JSONL format
-        self.train_file = os.path.join(self.input_config.get(), "train.jsonl")  # type: ignore
-        self.eval_file = os.path.join(self.input_config.get(), "eval.jsonl")  # type: ignore
-        df.to_json(self.train_file, orient="records", lines=True)
-        df.to_json(self.eval_file, orient="records", lines=True)
+            self.eval_file = file_path

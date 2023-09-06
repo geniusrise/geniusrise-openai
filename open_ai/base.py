@@ -129,7 +129,9 @@ class OpenAIFineTuner(Bolt):
         self.eval_file: Optional[str] = None
 
     @abstractmethod
-    def load_dataset(self, dataset_path: str, **kwargs) -> Union[Dataset, DatasetDict, Optional[Dataset]]:
+    def load_dataset(
+        self, dataset_path: str, **kwargs
+    ) -> Union[Dataset, DatasetDict, Optional[Dataset]]:
         """
         Load a dataset from a file.
 
@@ -145,7 +147,9 @@ class OpenAIFineTuner(Bolt):
         """
         raise NotImplementedError("Subclasses should implement this!")
 
-    def prepare_fine_tuning_data(self, data: Union[Dataset, DatasetDict, Optional[Dataset]], data_type: str) -> None:
+    def prepare_fine_tuning_data(
+        self, data: Union[Dataset, DatasetDict, Optional[Dataset]], data_type: str
+    ) -> None:
         """
         Prepare the given data for fine-tuning.
 
@@ -166,6 +170,7 @@ class OpenAIFineTuner(Bolt):
         file_path = os.path.join(self.input.get(), f"{data_type}.jsonl")
         df.to_json(file_path, orient="records", lines=True)
 
+        print(file_path)
         if data_type == "train":
             self.train_file = file_path
         else:
@@ -219,7 +224,9 @@ class OpenAIFineTuner(Bolt):
         """
         try:
             # Preprocess data
-            dataset_kwargs = {k.replace("data_", ""): v for k, v in kwargs.items() if "data_" in k}
+            dataset_kwargs = {
+                k.replace("data_", ""): v for k, v in kwargs.items() if "data_" in k
+            }
             self.preprocess_data(**dataset_kwargs)
 
             # Upload the training and validation files to OpenAI's servers
@@ -239,7 +246,9 @@ class OpenAIFineTuner(Bolt):
             }
 
             # Remove None values from the parameters
-            fine_tune_params = {k: v for k, v in fine_tune_params.items() if v is not None}
+            fine_tune_params = {
+                k: v for k, v in fine_tune_params.items() if v is not None
+            }
 
             # Make the fine-tuning request
             fine_tune_job = openai.FineTune.create(**fine_tune_params)
@@ -265,7 +274,9 @@ class OpenAIFineTuner(Bolt):
         """
         return openai.FineTune.retrieve(job_id)
 
-    def wait_for_fine_tuning(self, job_id: str, check_interval: int = 60) -> Optional[openai.FineTune]:
+    def wait_for_fine_tuning(
+        self, job_id: str, check_interval: int = 60
+    ) -> Optional[openai.FineTune]:
         """Wait for a fine-tuning job to complete, checking the status every `check_interval` seconds."""
         while True:
             job = self.get_fine_tuning_job(job_id)

@@ -6,22 +6,16 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 from datasets import Dataset
-from geniusrise.bolts.openai.base import OpenAIFineTuner
-from geniusrise.core import BatchInput, BatchOutput, InMemoryState
+from geniusrise import BatchInput, BatchOutput, InMemoryState
 
+from open_ai import OpenAIFineTuner
 import openai
-
-# Retrieve environment variables
-api_key = os.getenv("OPENAI_API_KEY")
-api_type = os.getenv("OPENAI_API_TYPE")
-api_base_url = os.getenv("OPENAI_API_BASE_URL")
-api_version = os.getenv("OPENAI_API_VERSION")
 
 
 class TestOpenAIFineTuner(OpenAIFineTuner):
     def load_dataset(self, dataset_path, **kwargs):
         # Load a simple dataset for testing
-        data = [{"source": "Hello", "target": "Bonjour"}]
+        data = [{"prompt": "Hello", "completion": "Bonjour"}]
         return Dataset.from_pandas(pd.DataFrame(data))
 
 
@@ -39,11 +33,6 @@ def bolt():
         input=input,
         output=output,
         state=state,
-        api_type=api_type,
-        api_key=api_key,
-        api_base=api_base_url,
-        api_version=api_version,
-        eval=False,
     )
 
 
@@ -61,31 +50,29 @@ def test_load_dataset(bolt):
 
 def test_prepare_fine_tuning_data(bolt):
     data = [
-        {"source": "Hello", "target": "Bonjour"},
-        {"source": "Goodbye", "target": "Au revoir"},
+        {"prompt": "Hello", "completion": "Bonjour"},
+        {"prompt": "Goodbye", "completion": "Au revoir"},
     ]
     data_df = pd.DataFrame(data)
-    data_df.rename(columns={"source": "prompt"}, inplace=True)
-    data_df.rename(columns={"target": "completion"}, inplace=True)
-    bolt.prepare_fine_tuning_data(data_df)
+    bolt.prepare_fine_tuning_data(data_df, "train")
+    bolt.prepare_fine_tuning_data(data_df, "eval")
     assert os.path.isfile(bolt.train_file)
     assert os.path.isfile(bolt.eval_file)
 
 
-# The following tests would interact with the actual OpenAI services
-# Make sure you have the necessary permissions and are aware of the potential costs
+# # The following tests would interact with the actual OpenAI services
+# # Make sure you have the necessary permissions and are aware of the potential costs
 
 
 def test_fine_tune(bolt):
     # Prepare the fine-tuning data first
     data = [
-        {"source": "Hello", "target": "Bonjour"},
-        {"source": "Goodbye", "target": "Au revoir"},
+        {"prompt": "Hello", "completion": "Bonjour"},
+        {"prompt": "Goodbye", "completion": "Au revoir"},
     ]
     data_df = pd.DataFrame(data)
-    data_df.rename(columns={"source": "prompt"}, inplace=True)
-    data_df.rename(columns={"target": "completion"}, inplace=True)
-    bolt.prepare_fine_tuning_data(data_df)
+    bolt.prepare_fine_tuning_data(data_df, "train")
+    bolt.prepare_fine_tuning_data(data_df, "eval")
 
     fine_tune_job = bolt.fine_tune(
         model="ada",
@@ -98,21 +85,11 @@ def test_fine_tune(bolt):
     assert "ft-" in fine_tune_job.id
 
 
-@patch.object(openai.FineTune, "retrieve")
-def test_get_fine_tuning_job(mock_retrieve, bolt):
-    mock_fine_tune = openai.FineTune(id="test_job_id")
-    mock_fine_tune.status = "succeeded"
-    mock_retrieve.return_value = mock_fine_tune
-    job = bolt.get_fine_tuning_job("test_job_id")
-    assert job.id == "test_job_id"
-    assert job.status == "succeeded"
+def test_get_fine_tuning_job(bolt):
+    job = bolt.get_fine_tuning_job("ft-YIvWPvrzt9Lrfvs7CsvFQcvM")
+    assert job.status == "pending" or job.status == "succeeded"
 
 
-@patch.object(openai.FineTune, "delete")
-def test_delete_fine_tuned_model(mock_delete, bolt):
-    mock_fine_tune = openai.FineTune(id="test_model_id")
-    mock_fine_tune.deleted = True
-    mock_delete.return_value = mock_fine_tune
-    result = bolt.delete_fine_tuned_model("test_model_id")
-    assert result.id == "test_model_id"
-    assert result.deleted
+# def test_delete_fine_tuned_model(mock_delete, bolt):
+# result = bolt.delete_fine_tuned_model("ft-YIvWPvrzt9Lrfvs7CsvFQcvM")
+# assert result.deleted

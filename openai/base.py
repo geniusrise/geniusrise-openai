@@ -2,7 +2,7 @@ import logging
 import os
 from abc import abstractmethod
 from time import sleep
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import pandas as pd
 from datasets import Dataset, DatasetDict
@@ -14,10 +14,99 @@ from openai.cli import FineTune
 
 
 class OpenAIFineTuner(Bolt):
-    """
-    A bolt for fine-tuning OpenAI models.
+    r"""
+    An abstract base class for writing bolts for fine-tuning OpenAI models.
+
+    This base class is intended to be subclassed for fine-tuning OpenAI models.
+    The chief objective of its subclasses is to load and preprocess the dataset,
+    though of course, other methods, including fine-tuning, can be overridden for customization.
 
     This bolt uses the OpenAI API to fine-tune a pre-trained model.
+
+    Each subclass can be invoked using the `genius` cli or yaml.
+
+    ## Using genius cli
+
+    ```bash
+    genius <bolt_name> rise \
+        batch \
+            --input_s3_bucket my-input-bucket \
+            --input_s3_folder my-input-folder \
+        batch \
+            --output_s3_bucket my-output-bucket \
+            --output_s3_folder my-output-folder \
+        postgres \
+            --postgres_host 127.0.0.1 \
+            --postgres_port 5432 \
+            --postgres_user postgres \
+            --postgres_password postgres \
+            --postgres_database geniusrise \
+            --postgres_table task_state \
+        fine_tune \
+        --args
+            model=gpt-3.5-turbo \
+            n_epochs=2 \
+            batch_size=64 \
+            learning_rate_multiplier=0.5 \
+            prompt_loss_weight=1 \
+            wait=True \
+    ```
+
+    This will load and preprocess data from input s3 location, and upload it to openai for fine tuning, and wait.
+
+    ## Using YAML
+
+    Bolts can be invoked using the `genius` cli on a yaml file.
+
+    Create a yaml file with the following content (looks very similar to cli):
+
+    ```yaml
+    version: 1
+
+    bolts:
+        - name: my-fine-tuner
+            method: fine_tune
+            args:
+                model: gpt-3.5-turbo
+                n_epochs: 2
+                batch_size: 64
+                learning_rate_multiplier: 0.5
+                prompt_loss_weight: 1
+                wait: True
+            input:
+                type: batch
+                    bucket: my-input-bucket
+                    folder: my-input-folder
+            output:
+                type: batch
+                    bucket: my-output-bucket
+                    folder: my-output-folder
+            state:
+                type: postgres
+                    host: 127.0.0.1
+                    port: 5432
+                    user: postgres
+                    password: postgres
+                    database: geniusrise
+                    table: task_state
+    ```
+
+    ```bash
+    genius rise
+    ```
+
+    Gotchas:
+
+    1. Extra command line arguments can be passed to the load_dataset method via fine_tune method by appending `data_` to the param name.
+
+    e.g.
+
+    ```yaml
+            args:
+                model: gpt-3.5-turbo
+                ...
+                data_some_arbitrary_key: passed_to_load_dataset_method
+    ```
     """
 
     def __init__(
@@ -104,11 +193,11 @@ class OpenAIFineTuner(Bolt):
     def fine_tune(
         self,
         model: str,
-        suffix: str,
         n_epochs: int,
         batch_size: int,
         learning_rate_multiplier: int,
         prompt_loss_weight: int,
+        suffix: Optional[str] = None,
         wait: bool = False,
         **kwargs,
     ) -> openai.FineTune:

@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from datasets import Dataset
 from geniusrise.bolts.openai.base import OpenAIFineTuner
-from geniusrise.core import BatchInputConfig, BatchOutputConfig, InMemoryStateManager
+from geniusrise.core import BatchInput, BatchOutput, InMemoryState
 
 import openai
 
@@ -31,14 +31,14 @@ def bolt():
     input_dir = tempfile.mkdtemp()
     output_dir = tempfile.mkdtemp()
 
-    input_config = BatchInputConfig(input_dir, "geniusrise-test-bucket", "test-openai-input")
-    output_config = BatchOutputConfig(output_dir, "geniusrise-test-bucket", "test-openai-output")
-    state_manager = InMemoryStateManager()
+    input = BatchInput(input_dir, "geniusrise-test-bucket", "test-openai-input")
+    output = BatchOutput(output_dir, "geniusrise-test-bucket", "test-openai-output")
+    state = InMemoryState()
 
     return TestOpenAIFineTuner(
-        input_config=input_config,
-        output_config=output_config,
-        state_manager=state_manager,
+        input=input,
+        output=output,
+        state=state,
         api_type=api_type,
         api_key=api_key,
         api_base=api_base_url,
@@ -48,9 +48,9 @@ def bolt():
 
 
 def test_bolt_init(bolt):
-    assert bolt.input_config is not None
-    assert bolt.output_config is not None
-    assert bolt.state_manager is not None
+    assert bolt.input is not None
+    assert bolt.output is not None
+    assert bolt.state is not None
 
 
 def test_load_dataset(bolt):

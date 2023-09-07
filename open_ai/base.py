@@ -1,3 +1,19 @@
+# 🧠 Geniusrise
+# Copyright (C) 2023  geniusrise.ai
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import logging
 import os
 from abc import abstractmethod
@@ -49,7 +65,7 @@ class OpenAIFineTuner(Bolt):
             batch_size=64 \
             learning_rate_multiplier=0.5 \
             prompt_loss_weight=1 \
-            wait=True \
+            wait=True
     ```
 
     This will load and preprocess data from input s3 location, and upload it to openai for fine tuning, and wait.
@@ -64,7 +80,8 @@ class OpenAIFineTuner(Bolt):
     version: 1
 
     bolts:
-        - name: my-fine-tuner
+        my_fine_tuner:
+            name: OpenAIClassificationFineTuner
             method: fine_tune
             args:
                 model: gpt-3.5-turbo
@@ -75,20 +92,20 @@ class OpenAIFineTuner(Bolt):
                 wait: True
             input:
                 type: batch
-                    bucket: my-input-bucket
-                    folder: my-input-folder
+                bucket: my-input-bucket
+                folder: my-input-folder
             output:
                 type: batch
-                    bucket: my-output-bucket
-                    folder: my-output-folder
+                bucket: my-output-bucket
+                folder: my-output-folder
             state:
                 type: postgres
-                    host: 127.0.0.1
-                    port: 5432
-                    user: postgres
-                    password: postgres
-                    database: geniusrise
-                    table: task_state
+                host: 127.0.0.1
+                port: 5432
+                user: postgres
+                password: postgres
+                database: geniusrise
+                table: state
     ```
 
     ```bash
@@ -129,9 +146,7 @@ class OpenAIFineTuner(Bolt):
         self.eval_file: Optional[str] = None
 
     @abstractmethod
-    def load_dataset(
-        self, dataset_path: str, **kwargs
-    ) -> Union[Dataset, DatasetDict, Optional[Dataset]]:
+    def load_dataset(self, dataset_path: str, **kwargs) -> Union[Dataset, DatasetDict, Optional[Dataset]]:
         """
         Load a dataset from a file.
 
@@ -147,9 +162,7 @@ class OpenAIFineTuner(Bolt):
         """
         raise NotImplementedError("Subclasses should implement this!")
 
-    def prepare_fine_tuning_data(
-        self, data: Union[Dataset, DatasetDict, Optional[Dataset]], data_type: str
-    ) -> None:
+    def prepare_fine_tuning_data(self, data: Union[Dataset, DatasetDict, Optional[Dataset]], data_type: str) -> None:
         """
         Prepare the given data for fine-tuning.
 
@@ -170,7 +183,6 @@ class OpenAIFineTuner(Bolt):
         file_path = os.path.join(self.input.get(), f"{data_type}.jsonl")
         df.to_json(file_path, orient="records", lines=True)
 
-        print(file_path)
         if data_type == "train":
             self.train_file = file_path
         else:
@@ -224,9 +236,7 @@ class OpenAIFineTuner(Bolt):
         """
         try:
             # Preprocess data
-            dataset_kwargs = {
-                k.replace("data_", ""): v for k, v in kwargs.items() if "data_" in k
-            }
+            dataset_kwargs = {k.replace("data_", ""): v for k, v in kwargs.items() if "data_" in k}
             self.preprocess_data(**dataset_kwargs)
 
             # Upload the training and validation files to OpenAI's servers
@@ -246,9 +256,7 @@ class OpenAIFineTuner(Bolt):
             }
 
             # Remove None values from the parameters
-            fine_tune_params = {
-                k: v for k, v in fine_tune_params.items() if v is not None
-            }
+            fine_tune_params = {k: v for k, v in fine_tune_params.items() if v is not None}
 
             # Make the fine-tuning request
             fine_tune_job = openai.FineTune.create(**fine_tune_params)
@@ -274,9 +282,7 @@ class OpenAIFineTuner(Bolt):
         """
         return openai.FineTune.retrieve(job_id)
 
-    def wait_for_fine_tuning(
-        self, job_id: str, check_interval: int = 60
-    ) -> Optional[openai.FineTune]:
+    def wait_for_fine_tuning(self, job_id: str, check_interval: int = 60) -> Optional[openai.FineTune]:
         """Wait for a fine-tuning job to complete, checking the status every `check_interval` seconds."""
         while True:
             job = self.get_fine_tuning_job(job_id)

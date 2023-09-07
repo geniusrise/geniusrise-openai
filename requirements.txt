@@ -25,6 +25,7 @@ direnv==2020.12.3
 docutils==0.20.1
 emoji==2.7.0
 env-file==2020.12.3
+et-xmlfile==1.1.0
 exceptiongroup==1.1.2
 filelock==3.12.3
 flake8==6.1.0
@@ -57,6 +58,7 @@ mypy-extensions==1.0.0
 numpy==1.25.2
 oauthlib==3.2.2
 openai==0.28.0
+openpyxl==3.1.2
 packaging==23.1
 pandas==2.1.0
 pathspec==0.11.2

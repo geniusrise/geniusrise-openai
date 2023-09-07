@@ -19,3 +19,4 @@ from .classification import OpenAIClassificationFineTuner
 from .commonsense_reasoning import OpenAICommonsenseReasoningFineTuner
 from .instruction_tuning import OpenAIInstructionFineTuner
 from .language_model import OpenAILanguageModelFineTuner
+from .ner import NamedEntityRecognitionFineTuner

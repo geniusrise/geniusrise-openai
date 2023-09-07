@@ -20,3 +20,4 @@ from .commonsense_reasoning import OpenAICommonsenseReasoningFineTuner
 from .instruction_tuning import OpenAIInstructionFineTuner
 from .language_model import OpenAILanguageModelFineTuner
 from .ner import NamedEntityRecognitionFineTuner
+from .question_answering import OpenAIQuestionAnsweringFineTuner

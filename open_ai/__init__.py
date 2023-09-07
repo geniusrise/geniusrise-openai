@@ -17,3 +17,4 @@
 from .base import OpenAIFineTuner
 from .classification import OpenAIClassificationFineTuner
 from .commonsense_reasoning import OpenAICommonsenseReasoningFineTuner
+from .instruction_tuning import OpenAIInstructionFineTuner

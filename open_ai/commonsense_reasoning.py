@@ -14,7 +14,7 @@ from .base import OpenAIFineTuner
 
 
 class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
-    """
+    r"""
     A bolt for fine-tuning OpenAI models for commonsense reasoning tasks.
 
     This bolt uses the OpenAI API to fine-tune a pre-trained model for commonsense reasoning.
@@ -51,7 +51,7 @@ class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
 
     bolts:
         my_fine_tuner:
-            name: OpenAIClassificationFineTuner
+            name: OpenAICommonsenseReasoningFineTuner
             method: fine_tune
             args:
                 model: gpt-3.5-turbo
@@ -80,7 +80,7 @@ class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
     """
 
     def load_dataset(self, dataset_path: str, **kwargs: Any) -> Union[Dataset, DatasetDict, Optional[Dataset]]:
-        """
+        r"""
         Load a commonsense reasoning dataset from a directory.
 
         Args:

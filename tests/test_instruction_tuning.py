@@ -1,115 +1,139 @@
-# import json
-# import os
-# import tempfile
+import json
+import os
+import sqlite3
+import tempfile
+import xml.etree.ElementTree as ET
 
-# import pandas as pd
-# import pytest
-# from datasets import Dataset
-# from geniusrise.bolts.openai.instruction_tuning import OpenAIInstructionFineTuner
-# from geniusrise.core import BatchInput, BatchOutput, InMemoryState
+import pandas as pd
+import pytest
+import yaml  # type: ignore
+from datasets import Dataset
+from pyarrow import feather
+from pyarrow import parquet as pq
 
-# # Retrieve environment variables
-# api_key = os.getenv("OPENAI_API_KEY")
-# api_type = os.getenv("OPENAI_API_TYPE")
-# api_base_url = os.getenv("OPENAI_API_BASE_URL")
-# api_version = os.getenv("OPENAI_API_VERSION")
-
-
-# @pytest.fixture
-# def bolt():
-#     # Use temporary directories for input and output
-#     input_dir = tempfile.mkdtemp()
-#     output_dir = tempfile.mkdtemp()
-
-#     # Create the expected directory structure for the train and eval datasets
-#     train_dataset_path = os.path.join(input_dir, "train")
-#     eval_dataset_path = os.path.join(input_dir, "eval")
-#     os.makedirs(train_dataset_path)
-#     os.makedirs(eval_dataset_path)
-
-#     input = BatchInput(input_dir, "geniusrise-test-bucket", "test-openai-input")
-#     output = BatchOutput(output_dir, "geniusrise-test-bucket", "test-openai-output")
-#     state = InMemoryState()
-
-#     return OpenAIInstructionFineTuner(
-#         input=input,
-#         output=output,
-#         state=state,
-#         api_type=api_type,
-#         api_key=api_key,
-#         api_base=api_base_url,
-#         api_version=api_version,
-#         eval=False,
-#     )
+from open_ai import OpenAIInstructionFineTuner
+from geniusrise import BatchInput, BatchOutput, InMemoryState
 
 
-# def create_test_dataset():
-#     # Create a temporary directory with a sample dataset
-#     dataset_dir = tempfile.mkdtemp()
-#     train_dir = os.path.join(dataset_dir, "train")
-#     os.makedirs(train_dir)
-#     with open(os.path.join(train_dir, "example1.jsonl"), "w") as f:
-#         examples = [
-#             {"instruction": "Write a greeting.", "output": "Hello!"},
-#             {"instruction": "Write a farewell.", "output": "Goodbye!"},
-#         ]
-#         for example in examples:
-#             f.write(json.dumps(example) + "\n")
-#     return dataset_dir
+def create_dataset_in_format(directory, ext):
+    os.makedirs(directory, exist_ok=True)
+    data = [{"instruction": f"instruction_{i}", "output": f"output_{i}"} for i in range(10)]
+    df = pd.DataFrame(data)
+
+    if ext == "huggingface":
+        dataset = Dataset.from_pandas(df)
+        dataset.save_to_disk(directory)
+    elif ext == "csv":
+        df.to_csv(os.path.join(directory, "data.csv"), index=False)
+    elif ext == "jsonl":
+        with open(os.path.join(directory, "data.jsonl"), "w") as f:
+            for item in data:
+                f.write(json.dumps(item) + "\n")
+    elif ext == "parquet":
+        pq.write_table(feather.Table.from_pandas(df), os.path.join(directory, "data.parquet"))
+    elif ext == "json":
+        with open(os.path.join(directory, "data.json"), "w") as f:
+            json.dump(data, f)
+    elif ext == "xml":
+        root = ET.Element("root")
+        for item in data:
+            record = ET.SubElement(root, "record")
+            ET.SubElement(record, "instruction").text = item["instruction"]
+            ET.SubElement(record, "output").text = item["output"]
+        tree = ET.ElementTree(root)
+        tree.write(os.path.join(directory, "data.xml"))
+    elif ext == "yaml":
+        with open(os.path.join(directory, "data.yaml"), "w") as f:
+            yaml.dump(data, f)
+    elif ext == "tsv":
+        df.to_csv(os.path.join(directory, "data.tsv"), index=False, sep="\t")
+    elif ext == "xlsx":
+        df.to_excel(os.path.join(directory, "data.xlsx"), index=False)
+    elif ext == "db":
+        conn = sqlite3.connect(os.path.join(directory, "data.db"))
+        df.to_sql("dataset_table", conn, if_exists="replace", index=False)
+        conn.close()
+    elif ext == "feather":
+        feather.write_feather(df, os.path.join(directory, "data.feather"))
 
 
-# def test_load_dataset(bolt):
-#     dataset_dir = create_test_dataset()
-
-#     # Load the dataset
-#     dataset = bolt.load_dataset(dataset_dir + "/train")
-#     assert dataset is not None
-#     assert len(dataset) == 2
-#     assert dataset[0]["instruction"] == "Write a greeting."
-#     assert dataset[0]["output"] == "Hello!"
-#     assert dataset[1]["instruction"] == "Write a farewell."
-#     assert dataset[1]["output"] == "Goodbye!"
-
-
-# def test_prepare_fine_tuning_data(bolt):
-#     dataset_dir = create_test_dataset()
-
-#     # Load the dataset
-#     dataset = bolt.load_dataset(dataset_dir + "/train")
-
-#     bolt.prepare_fine_tuning_data(dataset)
-
-#     # Check that the train and eval files were created
-#     assert os.path.isfile(bolt.train_file)
-#     assert os.path.isfile(bolt.eval_file)
-
-#     # Check the content of the train file
-#     with open(bolt.train_file, "r") as f:
-#         train_data = [line.strip() for line in f.readlines()]
-#     assert train_data[0] == '{"prompt":"Write a greeting.","completion":"Hello!"}'
-#     assert train_data[1] == '{"prompt":"Write a farewell.","completion":"Goodbye!"}'
+# Fixtures for each file type
+@pytest.fixture(
+    params=[
+        "huggingface",
+        "csv",
+        "jsonl",
+        "parquet",
+        "json",
+        "xml",
+        "yaml",
+        "tsv",
+        "xlsx",
+        "db",
+        "feather",
+    ]
+)
+def dataset_file(request, tmpdir):
+    ext = request.param
+    create_dataset_in_format(tmpdir + "/train", ext)
+    create_dataset_in_format(tmpdir + "/eval", ext)
+    return tmpdir, ext
 
 
-# def test_fine_tune(bolt):
-#     # Create a sample dataset
-#     data = [
-#         {"instruction": "Write a greeting.", "output": "Hello!"},
-#         {"instruction": "Write a farewell.", "output": "Goodbye!"},
-#     ]
-#     data_df = pd.DataFrame(data)
+@pytest.fixture
+def bolt():
+    input_dir = tempfile.mkdtemp()
+    output_dir = tempfile.mkdtemp()
 
-#     # Convert data_df to a Dataset
-#     dataset = Dataset.from_pandas(data_df)
+    input = BatchInput(input_dir, "geniusrise-test-bucket", "test-openai-input")
+    output = BatchOutput(output_dir, "geniusrise-test-bucket", "test-openai-output")
+    state = InMemoryState()
 
-#     # Prepare the fine-tuning data
-#     bolt.prepare_fine_tuning_data(dataset)
+    return OpenAIInstructionFineTuner(
+        input=input,
+        output=output,
+        state=state,
+    )
 
-#     fine_tune_job = bolt.fine_tune(
-#         model="ada",
-#         suffix="test",
-#         n_epochs=1,
-#         batch_size=1,
-#         learning_rate_multiplier=0.5,
-#         prompt_loss_weight=1,
-#     )
-#     assert "ft-" in fine_tune_job.id
+
+def test_load_dataset(bolt, dataset_file):
+    tmpdir, ext = dataset_file
+    bolt.input.input_folder = tmpdir
+
+    # Load the dataset
+    dataset = bolt.load_dataset(tmpdir + "/train")
+    assert dataset is not None
+    assert len(dataset) == 10
+    assert dataset[0]["instruction"] == "instruction_0"
+    assert dataset[0]["output"] == "output_0"
+
+
+def test_prepare_fine_tuning_data(bolt, dataset_file):
+    tmpdir, ext = dataset_file
+    bolt.input.input_folder = tmpdir
+    bolt.prepare_fine_tuning_data(bolt.load_dataset(tmpdir + "/train"), "train")
+    bolt.prepare_fine_tuning_data(bolt.load_dataset(tmpdir + "/eval"), "eval")
+
+    # Check that the train and eval files were created
+    assert os.path.isfile(bolt.train_file)
+    assert os.path.isfile(bolt.eval_file)
+
+    # Check the content of the train file
+    with open(bolt.train_file, "r") as f:
+        train_data = [line.strip() for line in f.readlines()]
+    assert train_data[0] == '{"prompt":"instruction_0","completion":"output_0"}'
+
+
+def test_fine_tune(bolt, dataset_file):
+    tmpdir, ext = dataset_file
+    bolt.input.input_folder = tmpdir
+
+    fine_tune_job = bolt.fine_tune(
+        model="ada",
+        suffix="test",
+        n_epochs=1,
+        batch_size=1,
+        learning_rate_multiplier=0.5,
+        prompt_loss_weight=1,
+    )
+    assert "ft-" in fine_tune_job.id

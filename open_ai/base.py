@@ -20,13 +20,12 @@ from abc import abstractmethod
 from time import sleep
 from typing import Optional, Union
 
+import openai
 import pandas as pd
 from datasets import Dataset, DatasetDict
 from geniusrise import BatchInput, BatchOutput, Bolt, State
-from tqdm import tqdm
-
-import openai
 from openai.cli import FineTune
+from tqdm import tqdm
 
 
 class OpenAIFineTuner(Bolt):

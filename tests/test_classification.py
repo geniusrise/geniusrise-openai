@@ -120,7 +120,6 @@ def test_load_dataset(bolt, dataset_file):
 
     # Load the dataset
     dataset = bolt.load_dataset(tmpdir + "/train")
-    print(dataset)
     assert dataset is not None
     assert len(dataset) == 10
     assert dataset[0]["prompt"] == "text_0"

@@ -19,12 +19,12 @@ import os
 import sqlite3
 import xml.etree.ElementTree as ET
 from typing import Optional, Union
-import yaml  # type: ignore
+
 import pandas as pd
+import yaml  # type: ignore
 from datasets import Dataset, DatasetDict, load_from_disk
 from pyarrow import feather
 from pyarrow import parquet as pq
-
 
 from .base import OpenAIFineTuner
 

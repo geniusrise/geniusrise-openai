@@ -18,7 +18,7 @@ class OpenAISentimentAnalysisFineTuner(OpenAIFineTuner):
 
     ## Using Command Line
     ```bash
-    genius OpenAIQuestionAnsweringFineTuner rise \
+    genius OpenAISentimentAnalysisFineTuner rise \
         batch \
             --input_s3_bucket my-input-bucket \
             --input_s3_folder my-input-folder \
@@ -47,7 +47,7 @@ class OpenAISentimentAnalysisFineTuner(OpenAIFineTuner):
     version: "1"
     bolts:
         my_openai_bolt:
-            name: "OpenAIQuestionAnsweringFineTuner"
+            name: "OpenAISentimentAnalysisFineTuner"
             method: "load_dataset"
             args:
                 dataset_path: "my_dataset_path"

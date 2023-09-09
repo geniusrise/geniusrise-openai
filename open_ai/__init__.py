@@ -21,3 +21,4 @@ from .instruction_tuning import OpenAIInstructionFineTuner
 from .language_model import OpenAILanguageModelFineTuner
 from .ner import NamedEntityRecognitionFineTuner
 from .question_answering import OpenAIQuestionAnsweringFineTuner
+from .sentiment_analysis import OpenAISentimentAnalysisFineTuner

@@ -11,9 +11,8 @@ with the openai ecosystem.
 **Table of Contents**
 
 - [Openai Bolts](#openai-bolts)
-  - [Usage](#usage)
-  - [Usage](#usage-1)
-    - [Text Classification](#text-classification)
+  - [Documentation](#documentation)
+  - [Examples](#examples)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -31,48 +30,8 @@ Includes:
 | 8   | [Summarization](#summarization)                       | Fine-tuning for summarization tasks            | Batch      | Batch       |
 | 9   | [Translation](#translation)                           | Fine-tuning for translation tasks              | Batch      | Batch       |
 
-## Usage
+## Documentation
 
-To test, first bring up all related services via the supplied docker-compose:
+## Examples
 
-```bash
-docker compose up -d
-docker compose logs -f
-```
-
-These management consoles will be available:
-
-| Console  | Link                   |
-| -------- | ---------------------- |
-| Kafka UI | http://localhost:8088/ |
-
-Postgres can be accessed with:
-
-```bash
-docker exec -it geniusrise-postgres-1 psql -U postgres
-```
-
-## Usage
-
-### Text Classification
-
-To fine-tune a model for text classification tasks, you can use the following
-command:
-
-```bash
-genius HuggingFaceClassificationFineTuner rise \
-  batch \
-      --input_folder my_dataset \
-  streaming \
-      --output_kafka_topic my_topic \
-      --output_kafka_cluster_connection_string localhost:9094 \
-  postgres \
-      --postgres_host 127.0.0.1 \
-      --postgres_port 5432 \
-      --postgres_user postgres \
-      --postgres_password postgres \
-      --postgres_database geniusrise \
-      --postgres_table state \
-  load_dataset \
-      --args
-```
+Please refer to the [examples](./examples/) directory.

@@ -1,0 +1,62 @@
+########################################################################
+# 🧠 Geniusrise
+# Summarization fine tuning bolt
+########################################################################
+#
+# genius OpenAISummarizationFineTuner rise \
+#     batch \
+#         --input_s3_bucket my-input-bucket \
+#         --input_s3_folder my-input-folder \
+#     batch \
+#         --output_s3_bucket my-output-bucket \
+#         --output_s3_folder my-output-folder \
+#     postgres \
+#         --postgres_host 127.0.0.1 \
+#         --postgres_port 5432 \
+#         --postgres_user postgres \
+#         --postgres_password postgres \
+#         --postgres_database geniusrise \
+#         --postgres_table task_state \
+#     fine_tune \
+#     --args
+#         model=gpt-3.5-turbo \
+#         n_epochs=2 \
+#         batch_size=64 \
+#         learning_rate_multiplier=0.5 \
+#         prompt_loss_weight=1 \
+#         wait=True
+
+version: "1"
+
+bolts:
+    my_openai_bolt:
+        name: "OpenAISummarizationFineTuner"
+        method: "load_dataset"
+        args:
+            dataset_path: "my_dataset_path"
+        input:
+            type: "batch"
+            args:
+                bucket: "my_bucket"
+                folder: "my_folder"
+        output:
+            type: "batch"
+            args:
+                bucket: "my_output_bucket"
+                folder: "my_output_folder"
+        state:
+            type: "postgres"
+            args:
+                postgres_host: "127.0.0.1"
+                postgres_port: 5432
+                postgres_user: "postgres"
+                postgres_password: "postgres"
+                postgres_database: "geniusrise"
+                postgres_table: "state"
+        deploy:
+            type: "k8s"
+            args:
+                name: "my_openai_bolt"
+                namespace: "default"
+                image: "my_openai_bolt_image"
+                replicas: 1

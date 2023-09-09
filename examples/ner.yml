@@ -1,0 +1,57 @@
+########################################################################
+# 🧠 Geniusrise
+# Named Entity Recognition fine tuning bolt
+########################################################################
+#
+# genius NamedEntityRecognitionFineTuner rise \
+#     batch \
+#         --input_s3_bucket my-input-bucket \
+#         --input_s3_folder my-input-folder \
+#     batch \
+#         --output_s3_bucket my-output-bucket \
+#         --output_s3_folder my-output-folder \
+#     postgres \
+#         --postgres_host 127.0.0.1 \
+#         --postgres_port 5432 \
+#         --postgres_user postgres \
+#         --postgres_password postgres \
+#         --postgres_database geniusrise \
+#         --postgres_table task_state \
+#     fine_tune \
+#     --args
+#         model=gpt-3.5-turbo \
+#         n_epochs=2 \
+#         batch_size=64 \
+#         learning_rate_multiplier=0.5 \
+#         prompt_loss_weight=1 \
+#         wait=True
+
+version: 1
+
+bolts:
+    my_fine_tuner:
+        name: NamedEntityRecognitionFineTuner
+        method: fine_tune
+        args:
+            model: gpt-3.5-turbo
+            n_epochs: 2
+            batch_size: 64
+            learning_rate_multiplier: 0.5
+            prompt_loss_weight: 1
+            wait: True
+        input:
+            type: batch
+            bucket: my-input-bucket
+            folder: my-input-folder
+        output:
+            type: batch
+            bucket: my-output-bucket
+            folder: my-output-folder
+        state:
+            type: postgres
+            host: 127.0.0.1
+            port: 5432
+            user: postgres
+            password: postgres
+            database: geniusrise
+            table: state

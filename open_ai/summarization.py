@@ -20,7 +20,7 @@ from .base import OpenAIFineTuner
 
 
 class OpenAISummarizationFineTuner(OpenAIFineTuner):
-    """
+    r"""
     A bolt for fine-tuning OpenAI models for summarization tasks.
 
     This bolt uses the OpenAI API to fine-tune a pre-trained model for summarization.

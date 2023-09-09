@@ -21,7 +21,7 @@ from .base import OpenAIFineTuner
 
 
 class OpenAITranslationFineTuner(OpenAIFineTuner):
-    """
+    r"""
     A bolt for fine-tuning OpenAI models for translation tasks.
 
     This bolt uses the OpenAI API to fine-tune a pre-trained model for translation.

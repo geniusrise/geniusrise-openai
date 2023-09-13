@@ -12,7 +12,7 @@ from geniusrise.core import BatchInput, BatchOutput, InMemoryState
 from pyarrow import feather
 from pyarrow import parquet as pq
 
-from open_ai import OpenAILanguageModelFineTuner
+from geniusrise_openai import OpenAILanguageModelFineTuner
 
 
 def create_dataset_in_format(directory, ext):

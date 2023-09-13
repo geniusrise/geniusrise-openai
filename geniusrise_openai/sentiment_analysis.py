@@ -3,25 +3,22 @@ import os
 import sqlite3
 import xml.etree.ElementTree as ET
 from typing import Any, Optional, Union
-
-import pandas as pd
 import yaml  # type: ignore
+import pandas as pd
 from datasets import Dataset, DatasetDict, load_from_disk
 from pyarrow import feather
 from pyarrow import parquet as pq
 
-from .base import OpenAIFineTuner
+from geniusrise_openai.base import OpenAIFineTuner
 
 
-class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
+class OpenAISentimentAnalysisFineTuner(OpenAIFineTuner):
     r"""
-    A bolt for fine-tuning OpenAI models for commonsense reasoning tasks.
+    A bolt for fine-tuning OpenAI models on sentiment analysis tasks.
 
-    This bolt uses the OpenAI API to fine-tune a pre-trained model for commonsense reasoning.
-
-    ## Using geniusrise to invoke via command line
+    ## Using Command Line
     ```bash
-    genius OpenAICommonsenseReasoningFineTuner rise \
+    genius OpenAISentimentAnalysisFineTuner rise \
         batch \
             --input_s3_bucket my-input-bucket \
             --input_s3_folder my-input-folder \
@@ -45,93 +42,116 @@ class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
             wait=True
     ```
 
-    ## Using geniusrise to invoke via YAML file
+    ## Using YAML File
     ```yaml
-    version: 1
-
+    version: "1"
     bolts:
-        my_fine_tuner:
-            name: OpenAICommonsenseReasoningFineTuner
-            method: fine_tune
+        my_openai_bolt:
+            name: "OpenAISentimentAnalysisFineTuner"
+            method: "load_dataset"
             args:
-                model: gpt-3.5-turbo
-                n_epochs: 2
-                batch_size: 64
-                learning_rate_multiplier: 0.5
-                prompt_loss_weight: 1
-                wait: True
+                dataset_path: "my_dataset_path"
             input:
-                type: batch
-                bucket: my-input-bucket
-                folder: my-input-folder
+                type: "batch"
+                args:
+                    bucket: "my_bucket"
+                    folder: "my_folder"
             output:
-                type: batch
-                bucket: my-output-bucket
-                folder: my-output-folder
+                type: "batch"
+                args:
+                    bucket: "my_output_bucket"
+                    folder: "my_output_folder"
             state:
-                type: postgres
-                host: 127.0.0.1
-                port: 5432
-                user: postgres
-                password: postgres
-                database: geniusrise
-                table: state
+                type: "postgres"
+                args:
+                    postgres_host: "127.0.0.1"
+                    postgres_port: 5432
+                    postgres_user: "postgres"
+                    postgres_password: "postgres"
+                    postgres_database: "geniusrise"
+                    postgres_table: "state"
+            deploy:
+                type: "k8s"
+                args:
+                    name: "my_openai_bolt"
+                    namespace: "default"
+                    image: "my_openai_bolt_image"
+                    replicas: 1
     ```
+
+    Args:
+        input (BatchInput): The batch input data.
+        output (BatchOutput): The output data.
+        state (State): The state manager.
     """
 
     def load_dataset(self, dataset_path: str, **kwargs: Any) -> Union[Dataset, DatasetDict, Optional[Dataset]]:
         r"""
-        Load a commonsense reasoning dataset from a directory.
+        Load a dataset from a directory.
 
         Args:
             dataset_path (str): The path to the dataset directory.
             **kwargs: Additional keyword arguments.
 
         Returns:
-            Dataset: The loaded dataset.
-
-        Raises:
-            Exception: If there was an error loading the dataset.
+            Dataset | DatasetDict: The loaded dataset.
 
         ## Supported Data Formats and Structures:
 
-        ### Hugging Face Dataset
-        Dataset files saved by the Hugging Face datasets library.
-
         ### JSONL
         Each line is a JSON object representing an example.
+        ```json
+        {"text": "The text content", "label": "The label"}
+        ```
 
         ### CSV
-        Should contain 'premise', 'hypothesis', and 'label' columns.
+        Should contain 'text' and 'label' columns.
+        ```csv
+        text,label
+        "The text content","The label"
+        ```
 
         ### Parquet
-        Should contain 'premise', 'hypothesis', and 'label' columns.
+        Should contain 'text' and 'label' columns.
 
         ### JSON
-        An array of dictionaries with 'premise', 'hypothesis', and 'label' keys.
+        An array of dictionaries with 'text' and 'label' keys.
+        ```json
+        [{"text": "The text content", "label": "The label"}]
+        ```
 
         ### XML
-        Each 'record' element should contain 'premise', 'hypothesis', and 'label' child elements.
+        Each 'record' element should contain 'text' and 'label' child elements.
+        ```xml
+        <record>
+            <text>The text content</text>
+            <label>The label</label>
+        </record>
+        ```
 
         ### YAML
-        Each document should be a dictionary with 'premise', 'hypothesis', and 'label' keys.
+        Each document should be a dictionary with 'text' and 'label' keys.
+        ```yaml
+        - text: "The text content"
+          label: "The label"
+        ```
 
         ### TSV
-        Should contain 'premise', 'hypothesis', and 'label' columns separated by tabs.
+        Should contain 'text' and 'label' columns separated by tabs.
 
         ### Excel (.xls, .xlsx)
-        Should contain 'premise', 'hypothesis', and 'label' columns.
+        Should contain 'text' and 'label' columns.
 
         ### SQLite (.db)
-        Should contain a table with 'premise', 'hypothesis', and 'label' columns.
+        Should contain a table with 'text' and 'label' columns.
 
         ### Feather
-        Should contain 'premise', 'hypothesis', and 'label' columns.
+        Should contain 'text' and 'label' columns.
         """
+        data = []
         try:
-            data = []
             if os.path.isfile(os.path.join(dataset_path, "dataset_info.json")):
-                return load_from_disk(dataset_path)
+                dataset = load_from_disk(dataset_path)
             else:
                 for filename in os.listdir(dataset_path):
                     filepath = os.path.join(dataset_path, filename)
@@ -148,20 +168,19 @@ class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
                         data.extend(df.to_dict("records"))
                     elif filename.endswith(".json"):
                         with open(filepath, "r") as f:
-                            data.extend(json.load(f))
+                            json_data = json.load(f)
+                            data.extend(json_data)
                     elif filename.endswith(".xml"):
                         tree = ET.parse(filepath)
                         root = tree.getroot()
                         for record in root.findall("record"):
-                            example = {
-                                "premise": record.find("premise").text,  # type: ignore
-                                "hypothesis": record.find("hypothesis").text,  # type: ignore
-                                "label": record.find("label").text,  # type: ignore
-                            }
-                            data.append(example)
-                    elif filename.endswith((".yaml", ".yml")):
+                            text = record.find("text").text  # type: ignore
+                            label = int(record.find("label").text)  # type: ignore
+                            data.append({"text": text, "label": label})
+                    elif filename.endswith(".yaml") or filename.endswith(".yml"):
                         with open(filepath, "r") as f:
-                            data.extend(yaml.safe_load(f))
+                            yaml_data = yaml.safe_load(f)
+                            data.extend(yaml_data)
                     elif filename.endswith(".tsv"):
                         df = pd.read_csv(filepath, sep="\t")
                         data.extend(df.to_dict("records"))
@@ -170,18 +189,17 @@ class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
                         data.extend(df.to_dict("records"))
                     elif filename.endswith(".db"):
                         conn = sqlite3.connect(filepath)
-                        query = "SELECT premise, hypothesis, label FROM dataset_table;"
+                        query = "SELECT text, label FROM dataset_table;"
                         df = pd.read_sql_query(query, conn)
                         data.extend(df.to_dict("records"))
                     elif filename.endswith(".feather"):
                         df = feather.read_feather(filepath)
                         data.extend(df.to_dict("records"))
-
-                return Dataset.from_pandas(pd.DataFrame(data))
-
+                dataset = Dataset.from_pandas(pd.DataFrame(data))
         except Exception as e:
             self.log.exception(f"Failed to load dataset: {e}")
             raise
+        return dataset
 
     def prepare_fine_tuning_data(self, data: Union[Dataset, DatasetDict, Optional[Dataset]], data_type: str) -> None:
         """
@@ -200,8 +218,8 @@ class OpenAICommonsenseReasoningFineTuner(OpenAIFineTuner):
         # Convert the data to a pandas DataFrame
         df = pd.DataFrame.from_records(data=data)
 
-        # For commonsense reasoning tasks, we need to convert the data into the format expected by OpenAI
-        df["prompt"] = df["premise"] + "\n" + df["hypothesis"]
+        # For NER tasks, we need to convert the data into the format expected by OpenAI
+        df["prompt"] = df["text"]
         df["completion"] = df["label"].apply(str)
         df = df[["prompt", "completion"]]
 

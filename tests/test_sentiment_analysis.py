@@ -11,7 +11,7 @@ from datasets import Dataset
 from pyarrow import feather
 from pyarrow import parquet as pq
 
-from open_ai import OpenAISentimentAnalysisFineTuner
+from geniusrise_openai import OpenAISentimentAnalysisFineTuner
 from geniusrise import BatchInput, BatchOutput, InMemoryState
 
 

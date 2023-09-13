@@ -10,7 +10,7 @@ from datasets import Dataset
 from pyarrow import feather, parquet as pq
 
 from geniusrise import BatchInput, BatchOutput, InMemoryState
-from open_ai import OpenAIQuestionAnsweringFineTuner
+from geniusrise_openai import OpenAIQuestionAnsweringFineTuner
 
 
 # Helper function to create synthetic data in different formats

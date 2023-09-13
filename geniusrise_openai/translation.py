@@ -17,7 +17,7 @@ from openai.validators import (
     get_validators,
 )
 
-from .base import OpenAIFineTuner
+from geniusrise_openai.base import OpenAIFineTuner
 
 
 class OpenAITranslationFineTuner(OpenAIFineTuner):

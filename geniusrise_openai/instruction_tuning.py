@@ -1,24 +1,24 @@
+import glob
 import json
 import os
 import sqlite3
-import ast
 import xml.etree.ElementTree as ET
 from typing import Any, Optional, Union
 
 import pandas as pd
-import pyarrow.feather as feather
 import pyarrow.parquet as pq
 import yaml  # type: ignore
 from datasets import Dataset, DatasetDict, load_from_disk
+from pyarrow import feather
 
-from .base import OpenAIFineTuner
+from geniusrise_openai.base import OpenAIFineTuner
 
 
-class NamedEntityRecognitionFineTuner(OpenAIFineTuner):
+class OpenAIInstructionFineTuner(OpenAIFineTuner):
     r"""
-    A bolt for fine-tuning OpenAI models on named entity recognition tasks.
+    A bolt for fine-tuning OpenAI models on instruction following tasks.
 
-    This bolt extends the OpenAIFineTuner to handle the specifics of named entity recognition tasks.
+    This bolt uses the OpenAI API to fine-tune a pre-trained model for instruction following tasks.
 
     Args:
         input (BatchInput): The batch input data.
@@ -27,7 +27,7 @@ class NamedEntityRecognitionFineTuner(OpenAIFineTuner):
 
     ## Using geniusrise to invoke via command line
     ```bash
-    genius NamedEntityRecognitionFineTuner rise \
+    genius OpenAIInstructionFineTuner rise \
         batch \
             --input_s3_bucket my-input-bucket \
             --input_s3_folder my-input-folder \
@@ -57,7 +57,7 @@ class NamedEntityRecognitionFineTuner(OpenAIFineTuner):
 
     bolts:
         my_fine_tuner:
-            name: NamedEntityRecognitionFineTuner
+            name: OpenAIInstructionFineTuner
             method: fine_tune
             args:
                 model: gpt-3.5-turbo
@@ -83,17 +83,19 @@ class NamedEntityRecognitionFineTuner(OpenAIFineTuner):
                 database: geniusrise
                 table: state
     ```
+
     """
 
-    def load_dataset(self, dataset_path: str, **kwargs: Any) -> Union[Dataset, DatasetDict, None]:
+    def load_dataset(self, dataset_path: str, **kwargs: Any) -> Union[Dataset, DatasetDict, Optional[Dataset]]:
         r"""
-        Load a named entity recognition dataset from a directory.
+        Load an instruction following dataset from a directory.
 
         Args:
             dataset_path (str): The path to the dataset directory.
+            **kwargs: Additional keyword arguments.
 
         Returns:
-            DatasetDict: The loaded dataset.
+            Dataset: The loaded dataset.
 
         Raises:
             Exception: If there was an error loading the dataset.
@@ -105,121 +107,91 @@ class NamedEntityRecognitionFineTuner(OpenAIFineTuner):
 
         ### JSONL
         Each line is a JSON object representing an example.
-        ```json
-        {"tokens": ["token1", "token2", ...], "ner_tags": [0, 1, ...]}
-        ```
 
         ### CSV
-        Should contain 'tokens' and 'ner_tags' columns.
-        ```csv
-        tokens,ner_tags
-        "['token1', 'token2', ...]", "[0, 1, ...]"
-        ```
+        Should contain 'instruction' and 'output' columns.
 
         ### Parquet
-        Should contain 'tokens' and 'ner_tags' columns.
+        Should contain 'instruction' and 'output' columns.
 
         ### JSON
-        An array of dictionaries with 'tokens' and 'ner_tags' keys.
-        ```json
-        [{"tokens": ["token1", "token2", ...], "ner_tags": [0, 1, ...]}]
-        ```
+        An array of dictionaries with 'instruction' and 'output' keys.
 
         ### XML
-        Each 'record' element should contain 'tokens' and 'ner_tags' child elements.
-        ```xml
-        <record>
-            <tokens>token1 token2 ...</tokens>
-            <ner_tags>0 1 ...</ner_tags>
-        </record>
-        ```
+        Each 'record' element should contain 'instruction' and 'output' child elements.
 
         ### YAML
-        Each document should be a dictionary with 'tokens' and 'ner_tags' keys.
-        ```yaml
-        - tokens: ["token1", "token2", ...]
-          ner_tags: [0, 1, ...]
-        ```
+        Each document should be a dictionary with 'instruction' and 'output' keys.
 
         ### TSV
-        Should contain 'tokens' and 'ner_tags' columns separated by tabs.
+        Should contain 'instruction' and 'output' columns separated by tabs.
 
         ### Excel (.xls, .xlsx)
-        Should contain 'tokens' and 'ner_tags' columns.
+        Should contain 'instruction' and 'output' columns.
 
         ### SQLite (.db)
-        Should contain a table with 'tokens' and 'ner_tags' columns.
+        Should contain a table with 'instruction' and 'output' columns.
 
         ### Feather
-        Should contain 'tokens' and 'ner_tags' columns.
+        Should contain 'instruction' and 'output' columns.
         """
-
         try:
             self.log.info(f"Loading dataset from {dataset_path}")
+            data = []
             if os.path.isfile(os.path.join(dataset_path, "dataset_info.json")):
-                dataset = load_from_disk(dataset_path)
+                return load_from_disk(dataset_path)
             else:
-                data = []
-                for filename in os.listdir(dataset_path):
+                for filename in glob.glob(f"{dataset_path}/*"):
                     filepath = os.path.join(dataset_path, filename)
                     if filename.endswith(".jsonl"):
                         with open(filepath, "r") as f:
                             for line in f:
                                 example = json.loads(line)
                                 data.append(example)
-                    # Additional file types support
                     elif filename.endswith(".csv"):
                         df = pd.read_csv(filepath)
-                        df["tokens"] = df["tokens"].apply(ast.literal_eval)
-                        df["ner_tags"] = df["ner_tags"].apply(ast.literal_eval)
                         data.extend(df.to_dict("records"))
                     elif filename.endswith(".parquet"):
                         df = pq.read_table(filepath).to_pandas()
                         data.extend(df.to_dict("records"))
                     elif filename.endswith(".json"):
                         with open(filepath, "r") as f:
-                            json_data = json.load(f)
-                            data.extend(json_data)
+                            data.extend(json.load(f))
                     elif filename.endswith(".xml"):
                         tree = ET.parse(filepath)
                         root = tree.getroot()
                         for record in root.findall("record"):
-                            tokens = record.find("tokens").text.split()  # type: ignore
-                            ner_tags = list(map(int, record.find("ner_tags").text.split()))  # type: ignore
-                            data.append({"tokens": tokens, "ner_tags": ner_tags})
-                    elif filename.endswith(".yaml") or filename.endswith(".yml"):
+                            example = {
+                                "instruction": record.find("instruction").text,  # type: ignore
+                                "output": record.find("output").text,  # type: ignore
+                            }
+                            data.append(example)
+                    elif filename.endswith((".yaml", ".yml")):
                         with open(filepath, "r") as f:
-                            yaml_data = yaml.safe_load(f)
-                            data.extend(yaml_data)
+                            data.extend(yaml.safe_load(f))
                     elif filename.endswith(".tsv"):
                         df = pd.read_csv(filepath, sep="\t")
-                        df["tokens"] = df["tokens"].apply(ast.literal_eval)
-                        df["ner_tags"] = df["ner_tags"].apply(ast.literal_eval)
                         data.extend(df.to_dict("records"))
                     elif filename.endswith((".xls", ".xlsx")):
                         df = pd.read_excel(filepath)
-                        df["tokens"] = df["tokens"].apply(ast.literal_eval)
-                        df["ner_tags"] = df["ner_tags"].apply(ast.literal_eval)
                         data.extend(df.to_dict("records"))
                     elif filename.endswith(".db"):
                         conn = sqlite3.connect(filepath)
-                        query = "SELECT tokens, ner_tags FROM dataset_table;"
+                        query = "SELECT instruction, output FROM dataset_table;"
                         df = pd.read_sql_query(query, conn)
                         data.extend(df.to_dict("records"))
                     elif filename.endswith(".feather"):
                         df = feather.read_feather(filepath)
                         data.extend(df.to_dict("records"))
 
-                df = pd.DataFrame(data)
-                dataset = Dataset.from_pandas(df)
+                return Dataset.from_pandas(pd.DataFrame(data))
 
-            return dataset
         except Exception as e:
-            self.log.exception(f"Error occurred when loading dataset from {dataset_path}. Error: {e}")
+            self.log.exception(f"Failed to load dataset: {e}")
             raise
 
     def prepare_fine_tuning_data(self, data: Union[Dataset, DatasetDict, Optional[Dataset]], data_type: str) -> None:
-        """
+        r"""
         Prepare the given data for fine-tuning.
 
         Args:
@@ -235,9 +207,9 @@ class NamedEntityRecognitionFineTuner(OpenAIFineTuner):
         # Convert the data to a pandas DataFrame
         df = pd.DataFrame.from_records(data=data)
 
-        # For NER tasks, we need to convert the data into the format expected by OpenAI
-        df["prompt"] = df["tokens"].apply(lambda x: " ".join([str(i) for i in x]))
-        df["completion"] = df["ner_tags"].apply(lambda x: " ".join([str(i) for i in x]))
+        # For instruction tuning tasks, we need to convert the data into the format expected by OpenAI
+        df["prompt"] = df["instruction"]
+        df["completion"] = df["output"].apply(str)
         df = df[["prompt", "completion"]]
 
         # Save the processed data into a file in JSONL format

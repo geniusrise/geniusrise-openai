@@ -12,7 +12,7 @@ from geniusrise import BatchInput, BatchOutput, InMemoryState
 from pyarrow import feather
 from pyarrow import parquet as pq
 
-from open_ai import OpenAICommonsenseReasoningFineTuner
+from geniusrise_openai import OpenAICommonsenseReasoningFineTuner
 
 
 # Helper function to create synthetic data in different formats

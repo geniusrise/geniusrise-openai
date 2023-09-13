@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 import yaml  # type: ignore
 from pyarrow import feather, parquet as pq
 
-from open_ai import OpenAISummarizationFineTuner
+from geniusrise_openai import OpenAISummarizationFineTuner
 from geniusrise import BatchInput, BatchOutput, InMemoryState
 
 

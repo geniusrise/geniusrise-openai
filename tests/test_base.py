@@ -22,7 +22,7 @@ import pytest
 from datasets import Dataset
 from geniusrise import BatchInput, BatchOutput, InMemoryState
 
-from open_ai import OpenAIFineTuner
+from geniusrise_openai import OpenAIFineTuner
 
 
 class TestOpenAIFineTuner(OpenAIFineTuner):

@@ -26,7 +26,7 @@ from datasets import Dataset, DatasetDict, load_from_disk
 from pyarrow import feather
 from pyarrow import parquet as pq
 
-from .base import OpenAIFineTuner
+from geniusrise_openai.base import OpenAIFineTuner
 
 
 class OpenAIClassificationFineTuner(OpenAIFineTuner):

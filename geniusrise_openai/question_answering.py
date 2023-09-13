@@ -9,7 +9,7 @@ from typing import Any, Dict, Optional, Union
 import pandas as pd
 from datasets import Dataset, DatasetDict, load_from_disk
 
-from .base import OpenAIFineTuner
+from geniusrise_openai.base import OpenAIFineTuner
 
 
 class OpenAIQuestionAnsweringFineTuner(OpenAIFineTuner):

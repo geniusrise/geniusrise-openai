@@ -28,7 +28,7 @@ from geniusrise.core import BatchInput, BatchOutput, InMemoryState
 from pyarrow import feather
 from pyarrow import parquet as pq
 
-from open_ai import OpenAIClassificationFineTuner
+from geniusrise_openai import OpenAIClassificationFineTuner
 
 
 # Helper function to create synthetic data in different formats

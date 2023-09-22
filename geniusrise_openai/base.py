@@ -215,6 +215,7 @@ class OpenAIFineTuner(Bolt):
         prompt_loss_weight: int,
         suffix: Optional[str] = None,
         wait: bool = False,
+        data_extractor_lambda: Optional[str] = None,
         **kwargs,
     ) -> openai.FineTune:
         """
@@ -228,11 +229,14 @@ class OpenAIFineTuner(Bolt):
             learning_rate_multiplier (int): Learning rate multiplier.
             prompt_loss_weight (int): Prompt loss weight.
             wait (bool, optional): Whether to wait for the fine-tuning to complete. Defaults to False.
+            data_extractor_lambda (str, optional): A lambda function run on each data element to extract the actual data.
             **kwargs: Additional keyword arguments for training and data loading.
 
         Raises:
             Exception: If any step in the fine-tuning process fails.
         """
+        self.data_extractor_lambda = data_extractor_lambda
+
         try:
             # Preprocess data
             dataset_kwargs = {k.replace("data_", ""): v for k, v in kwargs.items() if "data_" in k}

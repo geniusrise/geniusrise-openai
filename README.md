@@ -1,20 +1,36 @@
-![banner](./assets/banner.jpg)
+<h1 align="center">
+  <img src="./assets/logo_with_text.png" alt="Grace Hopper" width="900"/>
+</h1>
+<h2 align="center">
+  <a style="color:#f34960" href="https://docs.geniusrise.ai">Documentation</a>
+</h2>
 
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+<p align="center">
+  <img src="https://img.shields.io/github/actions/workflow/status/geniusrise/geniusrise-openai/pytest.yml?branch=master" alt="GitHub Workflow Status"/>
+  <img src="https://codecov.io/gh/geniusrise/geniusrise-openai/branch/main/graph/badge.svg?token=0b359b3a-f29c-4966-9661-a79386b3450d" alt="Codecov"/>
+  <img src="https://img.shields.io/github/license/geniusrise/geniusrise-openai" alt="Codecov"/>
+  <img src="https://img.shields.io/github/issues/geniusrise/geniusrise-openai" alt="Codecov"/>
+</p>
 
-# Openai Bolts
+---
+
+## <span style="color:#e667aa">About</span>
+
+<span style="color:#e4e48c">Geniusrise</span> is a modular, loosely-coupled
+AgentOps / MLOps framework designed for the era of Large Language Models,
+offering flexibility, inclusivity, and standardization in designing networks of
+AI agents.
+
+It seamlessly integrates tasks, state management, data handling, and model
+versioning, all while supporting diverse infrastructures and user expertise
+levels. With its plug-and-play architecture,
+<span style="color:#e4e48c">Geniusrise</span> empowers teams to build, share,
+and deploy AI agent workflows across various platforms.
+
+## <span style="color:#e667aa">Openai Bolts</span>
 
 This is a collection of generic streaming and (micro) batch bolts interfacing
 with the openai ecosystem.
-
-**Table of Contents**
-
-- [Openai Bolts](#openai-bolts)
-  - [Documentation](#documentation)
-  - [Examples](#examples)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 Includes:
 
@@ -30,8 +46,6 @@ Includes:
 | 8   | [Summarization](#summarization)                       | Fine-tuning for summarization tasks            | Batch      | Batch       |
 | 9   | [Translation](#translation)                           | Fine-tuning for translation tasks              | Batch      | Batch       |
 
-## Documentation
-
-## Examples
+## <span style="color:#e667aa">Examples</span>
 
 Please refer to the [examples](./examples/) directory.

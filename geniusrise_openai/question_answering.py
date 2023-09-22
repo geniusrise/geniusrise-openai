@@ -16,68 +16,66 @@ class OpenAIQuestionAnsweringFineTuner(OpenAIFineTuner):
     r"""
     A bolt for fine-tuning OpenAI models on question answering tasks.
 
-    ## Using geniusrise to invoke via command line
+    CLI Usage:
+
     ```bash
-    genius OpenAIQuestionAnsweringFineTuner rise \
-        batch \
-            --input_s3_bucket my-input-bucket \
-            --input_s3_folder my-input-folder \
-        batch \
-            --output_s3_bucket my-output-bucket \
-            --output_s3_folder my-output-folder \
-        postgres \
-            --postgres_host 127.0.0.1 \
-            --postgres_port 5432 \
-            --postgres_user postgres \
-            --postgres_password postgres \
-            --postgres_database geniusrise \
-            --postgres_table task_state \
-        fine_tune \
-        --args
-            model=gpt-3.5-turbo \
-            n_epochs=2 \
-            batch_size=64 \
-            learning_rate_multiplier=0.5 \
-            prompt_loss_weight=1 \
-            wait=True
+        genius HuggingFaceCommonsenseReasoningFineTuner rise \
+            batch \
+                --input_s3_bucket geniusrise-test \
+                --input_s3_folder train \
+            batch \
+                --output_s3_bucket geniusrise-test \
+                --output_s3_folder model \
+            fine_tune \
+                --args model_name=my_model tokenizer_name=my_tokenizer num_train_epochs=3 per_device_train_batch_size=8
     ```
 
-    ## Using geniusrise to invoke via YAML file
+    YAML Configuration:
+
     ```yaml
-    version: "1"
-    bolts:
-        my_openai_bolt:
-            name: "OpenAIQuestionAnsweringFineTuner"
-            method: "load_dataset"
-            args:
-                dataset_path: "my_dataset_path"
-            input:
-                type: "batch"
+        version: "1"
+        bolts:
+            my_fine_tuner:
+                name: "HuggingFaceCommonsenseReasoningFineTuner"
+                method: "fine_tune"
                 args:
-                    bucket: "my_bucket"
-                    folder: "my_folder"
-            output:
-                type: "batch"
-                args:
-                    bucket: "my_output_bucket"
-                    folder: "my_output_folder"
-            state:
-                type: "postgres"
-                args:
-                    postgres_host: "127.0.0.1"
-                    postgres_port: 5432
-                    postgres_user: "postgres"
-                    postgres_password: "postgres"
-                    postgres_database: "geniusrise"
-                    postgres_table: "state"
-            deploy:
-                type: "k8s"
-                args:
-                    name: "my_openai_bolt"
-                    namespace: "default"
-                    image: "my_openai_bolt_image"
-                    replicas: 1
+                    model_name: "my_model"
+                    tokenizer_name: "my_tokenizer"
+                    num_train_epochs: 3
+                    per_device_train_batch_size: 8
+                    data_max_length: 512
+                input:
+                    type: "batch"
+                    args:
+                        bucket: "my_bucket"
+                        folder: "my_dataset"
+                output:
+                    type: "batch"
+                    args:
+                        bucket: "my_bucket"
+                        folder: "my_model"
+                deploy:
+                    type: k8s
+                    args:
+                        kind: deployment
+                        name: my_fine_tuner
+                        context_name: arn:aws:eks:us-east-1:genius-dev:cluster/geniusrise-dev
+                        namespace: geniusrise
+                        image: geniusrise/geniusrise
+                        kube_config_path: ~/.kube/config
     ```
+
+    Supported Data Formats:
+        - JSONL
+        - CSV
+        - Parquet
+        - JSON
+        - XML
+        - YAML
+        - TSV
+        - Excel (.xls, .xlsx)
+        - SQLite (.db)
+        - Feather
     """
 
     def load_dataset(

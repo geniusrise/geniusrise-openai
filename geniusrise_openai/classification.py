@@ -38,65 +38,66 @@ class OpenAIClassificationFineTuner(OpenAIFineTuner):
         output (BatchOutput): The output data.
         state (State): The state manager.
 
-    ## Using geniusrise to invoke via command line
+    CLI Usage:
 
     ```bash
-    genius OpenAIClassificationFineTuner rise \
-        batch \
-            --input_s3_bucket my-input-bucket \
-            --input_s3_folder my-input-folder \
-        batch \
-            --output_s3_bucket my-output-bucket \
-            --output_s3_folder my-output-folder \
-        postgres \
-            --postgres_host 127.0.0.1 \
-            --postgres_port 5432 \
-            --postgres_user postgres \
-            --postgres_password postgres \
-            --postgres_database geniusrise \
-            --postgres_table task_state \
-        fine_tune \
-        --args
-            model=gpt-3.5-turbo \
-            n_epochs=2 \
-            batch_size=64 \
-            learning_rate_multiplier=0.5 \
-            prompt_loss_weight=1 \
-            wait=True
+        genius HuggingFaceCommonsenseReasoningFineTuner rise \
+            batch \
+                --input_s3_bucket geniusrise-test \
+                --input_s3_folder train \
+            batch \
+                --output_s3_bucket geniusrise-test \
+                --output_s3_folder model \
+            fine_tune \
+                --args model_name=my_model tokenizer_name=my_tokenizer num_train_epochs=3 per_device_train_batch_size=8
     ```
 
-    ## Using geniusrise to invoke via YAML file
+    YAML Configuration:
+
     ```yaml
-    version: 1
-
-    bolts:
-        my_fine_tuner:
-            name: OpenAIClassificationFineTuner
-            method: fine_tune
-            args:
-                model: gpt-3.5-turbo
-                n_epochs: 2
-                batch_size: 64
-                learning_rate_multiplier: 0.5
-                prompt_loss_weight: 1
-                wait: True
-            input:
-                type: batch
-                bucket: my-input-bucket
-                folder: my-input-folder
-            output:
-                type: batch
-                bucket: my-output-bucket
-                folder: my-output-folder
-            state:
-                type: postgres
-                host: 127.0.0.1
-                port: 5432
-                user: postgres
-                password: postgres
-                database: geniusrise
-                table: state
+        version: "1"
+        bolts:
+            my_fine_tuner:
+                name: "HuggingFaceCommonsenseReasoningFineTuner"
+                method: "fine_tune"
+                args:
+                    model_name: "my_model"
+                    tokenizer_name: "my_tokenizer"
+                    num_train_epochs: 3
+                    per_device_train_batch_size: 8
+                    data_max_length: 512
+                input:
+                    type: "batch"
+                    args:
+                        bucket: "my_bucket"
+                        folder: "my_dataset"
+                output:
+                    type: "batch"
+                    args:
+                        bucket: "my_bucket"
+                        folder: "my_model"
+                deploy:
+                    type: k8s
+                    args:
+                        kind: deployment
+                        name: my_fine_tuner
+                        context_name: arn:aws:eks:us-east-1:genius-dev:cluster/geniusrise-dev
+                        namespace: geniusrise
+                        image: geniusrise/geniusrise
+                        kube_config_path: ~/.kube/config
     ```
+
+    Supported Data Formats:
+        - JSONL
+        - CSV
+        - Parquet
+        - JSON
+        - XML
+        - YAML
+        - TSV
+        - Excel (.xls, .xlsx)
+        - SQLite (.db)
+        - Feather
     """
 
     def load_dataset(self, dataset_path: str, **kwargs) -> Union[Dataset, DatasetDict, Optional[Dataset]]:

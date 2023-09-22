@@ -143,6 +143,7 @@ class OpenAIFineTuner(Bolt):
         self.log = logging.getLogger(self.__class__.__name__)
         self.train_file: Optional[str] = None
         self.eval_file: Optional[str] = None
+        self.data_extractor_lambda: Optional[str] = None
 
     @abstractmethod
     def load_dataset(self, dataset_path: str, **kwargs) -> Union[Dataset, DatasetDict, Optional[Dataset]]:
